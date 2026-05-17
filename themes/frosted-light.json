@@ -1,0 +1,28 @@
+{
+  "name": "frosted-light",
+  "description": "Soft light material with milky translucency, low contrast, and broad highlights.",
+  "material": {
+    "blurRadius": 44,
+    "glassOpacity": 0.5,
+    "surfaceOpacity": 0.68,
+    "edgeOpacity": 0.58,
+    "noiseOpacity": 0.084,
+    "saturation": 0.98
+  },
+  "lighting": {
+    "intensity": 0.62,
+    "specularOpacity": 0.44,
+    "reflectionStrength": 0.22,
+    "ambientGlow": 0.16
+  },
+  "shadow": {
+    "softness": 46,
+    "opacity": 0.22,
+    "y": 28
+  },
+  "palette": {
+    "background": ["#f8fbff", "#e6f1ff", "#fff9ee", "#e9f7f0"],
+    "glass": ["rgba(255,255,255,0.84)", "rgba(255,255,255,0.34)", "rgba(218,230,244,0.22)"],
+    "edge": ["rgba(255,255,255,0.96)", "rgba(194,216,238,0.4)", "rgba(255,255,255,0.28)"]
+  }
+}

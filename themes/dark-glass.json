@@ -1,0 +1,28 @@
+{
+  "name": "dark-glass",
+  "description": "Dimensional dark glass with controlled contrast, cool reflections, and low ambient bloom.",
+  "material": {
+    "blurRadius": 38,
+    "glassOpacity": 0.34,
+    "surfaceOpacity": 0.48,
+    "edgeOpacity": 0.7,
+    "noiseOpacity": 0.06,
+    "saturation": 1.08
+  },
+  "lighting": {
+    "intensity": 0.68,
+    "specularOpacity": 0.42,
+    "reflectionStrength": 0.28,
+    "ambientGlow": 0.18
+  },
+  "shadow": {
+    "softness": 64,
+    "opacity": 0.48,
+    "y": 38
+  },
+  "palette": {
+    "background": ["#10151f", "#243246", "#0e1f26", "#332c46"],
+    "glass": ["rgba(255,255,255,0.34)", "rgba(120,160,210,0.18)", "rgba(255,255,255,0.1)"],
+    "edge": ["rgba(255,255,255,0.72)", "rgba(124,178,255,0.34)", "rgba(255,255,255,0.12)"]
+  }
+}

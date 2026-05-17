@@ -1,0 +1,42 @@
+{
+  "name": "miyagistudio",
+  "version": "1.0.0",
+  "description": "A production-quality Node.js icon rendering pipeline for premium glassmorphism application icons.",
+  "type": "module",
+  "private": false,
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "render": "node render.js",
+    "render:all": "node render.js --all-themes --svg",
+    "smoke:ui": "node scripts/smoke-ui.js",
+    "clean": "node scripts/clean.js"
+  },
+  "keywords": [
+    "icons",
+    "svg",
+    "puppeteer",
+    "sharp",
+    "glassmorphism",
+    "liquid-glass"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^14.0.2",
+    "fast-glob": "^3.3.3",
+    "fs-extra": "^11.3.2",
+    "node-addon-api": "^8.5.0",
+    "node-gyp": "^12.1.0",
+    "puppeteer": "^24.31.0",
+    "sharp": "^0.34.5",
+    "svgo": "^4.0.0"
+  },
+  "devDependencies": {
+    "vite": "^7.2.7"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

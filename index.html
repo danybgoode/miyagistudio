@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Miyagi Studio renders flat SVG icons into premium glassmorphism application icons with Node.js, Puppeteer, Sharp, and layered HTML/CSS/SVG composition."
+    />
+    <title>Miyagi Studio</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace" aria-label="Icon renderer preview">
+        <div class="toolbar">
+          <div>
+            <h1>Miyagi Studio</h1>
+            <p>Glass icon rendering pipeline</p>
+          </div>
+          <a class="button" href="https://github.com/danybgoode/miyagistudio">GitHub</a>
+        </div>
+
+        <div class="panels">
+          <section class="preview-panel" aria-label="Live glass preview">
+            <div class="icon-preview" id="iconPreview">
+              <div class="preview-field"></div>
+              <div class="preview-glass"></div>
+              <div class="preview-edge"></div>
+              <div class="preview-glyph" id="previewGlyph"></div>
+              <div class="preview-shine"></div>
+              <div class="preview-grain"></div>
+            </div>
+          </section>
+
+          <aside class="control-panel" aria-label="Renderer controls">
+            <label class="drop-zone" for="svgInput">
+              <input id="svgInput" type="file" accept=".svg,image/svg+xml" />
+              <span>Drop SVG or browse</span>
+            </label>
+
+            <label>
+              Theme
+              <select id="themeSelect">
+                <option value="liquid-glass">Liquid glass</option>
+                <option value="dark-glass">Dark glass</option>
+                <option value="frosted-light">Frosted light</option>
+                <option value="holographic-subtle">Holographic subtle</option>
+              </select>
+            </label>
+
+            <div class="command">
+              <span>CLI</span>
+              <code id="commandText">node render.js --theme liquid-glass</code>
+            </div>
+
+            <div class="notes">
+              <p>Source SVGs go in <code>icons/source</code>.</p>
+              <p>Production renders are written to <code>renders/&lt;theme&gt;</code> as PNG and WebP.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/ui.js"></script>
+  </body>
+</html>

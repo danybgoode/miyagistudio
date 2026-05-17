@@ -1,0 +1,28 @@
+{
+  "name": "holographic-subtle",
+  "description": "Quiet spectral glass with restrained iridescence and soft colored refractions.",
+  "material": {
+    "blurRadius": 34,
+    "glassOpacity": 0.36,
+    "surfaceOpacity": 0.52,
+    "edgeOpacity": 0.66,
+    "noiseOpacity": 0.07,
+    "saturation": 1.28
+  },
+  "lighting": {
+    "intensity": 0.78,
+    "specularOpacity": 0.5,
+    "reflectionStrength": 0.34,
+    "ambientGlow": 0.24
+  },
+  "shadow": {
+    "softness": 56,
+    "opacity": 0.26,
+    "y": 32
+  },
+  "palette": {
+    "background": ["#edf4ff", "#f8edf7", "#e9fff7", "#fff8df"],
+    "glass": ["rgba(255,255,255,0.7)", "rgba(174,226,255,0.18)", "rgba(255,188,229,0.14)"],
+    "edge": ["rgba(255,255,255,0.9)", "rgba(130,218,255,0.32)", "rgba(255,180,235,0.24)"]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "liquid-glass",
+  "description": "Balanced Apple-style glass with soft optical depth, pale highlights, and restrained color.",
+  "material": {
+    "blurRadius": 32,
+    "glassOpacity": 0.38,
+    "surfaceOpacity": 0.54,
+    "edgeOpacity": 0.62,
+    "noiseOpacity": 0.072,
+    "saturation": 1.22
+  },
+  "lighting": {
+    "intensity": 0.82,
+    "specularOpacity": 0.54,
+    "reflectionStrength": 0.36,
+    "ambientGlow": 0.22
+  },
+  "shadow": {
+    "softness": 54,
+    "opacity": 0.28,
+    "y": 34
+  },
+  "palette": {
+    "background": ["#dceeff", "#f9f7f1", "#dff6ef", "#c9d8ff"],
+    "glass": ["rgba(255,255,255,0.72)", "rgba(255,255,255,0.24)", "rgba(210,232,255,0.18)"],
+    "edge": ["rgba(255,255,255,0.92)", "rgba(172,213,255,0.38)", "rgba(255,255,255,0.18)"]
+  }
+}

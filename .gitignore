@@ -1,0 +1,14 @@
+node_modules/
+dist/
+temp/
+.DS_Store
+.env
+.vercel/
+
+# Rendered output is reproducible. Keep sample output only when explicitly added.
+renders/**/*.png
+renders/**/*.webp
+renders/**/*.html
+renders/**/*.svg
+!renders/.gitkeep
+!temp/.gitkeep
