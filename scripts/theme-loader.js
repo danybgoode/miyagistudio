@@ -31,6 +31,17 @@ export async function loadTheme(name, themeDir = "themes") {
 }
 
 function validateTheme(theme, file) {
+  if (theme.baseColor) {
+    // Crystal Liquid schema
+    const required = ["name", "baseColor", "secondaryColor", "highlightColor", "environmentColor"];
+    for (const key of required) {
+      if (theme[key] === undefined) {
+        throw new Error(`Theme file ${file} is missing required key "${key}".`);
+      }
+    }
+    return;
+  }
+
   for (const key of REQUIRED_THEME_KEYS) {
     if (!theme[key]) {
       throw new Error(`Theme file ${file} is missing required key "${key}".`);

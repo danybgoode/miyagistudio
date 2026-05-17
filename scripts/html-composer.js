@@ -1,6 +1,10 @@
 import { svgToDataUri } from "./svg-utils.js";
 
 export function composeIconHtml({ icon, theme, outputSize, assetScale }) {
+  if (theme.baseColor) {
+    return composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale });
+  }
+
   const css = composeCss({ icon, theme, outputSize, assetScale });
 
   return `<!doctype html>
@@ -42,7 +46,7 @@ export function composeIconHtml({ icon, theme, outputSize, assetScale }) {
 }
 
 export function composeIconSvg({ icon, theme, outputSize, assetScale }) {
-  const html = composeIconHtml({ icon, theme, outputSize, assetScale })
+  const html = (theme.baseColor ? composeCrystalLiquidHtml : composeIconHtml)({ icon, theme, outputSize, assetScale })
     .replace("<!doctype html>", "")
     .replace(/<html[^>]*>|<\/html>|<head>|<\/head>|<body>|<\/body>/g, "");
 
@@ -317,4 +321,245 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale }) {
+  const css = composeCrystalLiquidCss({ icon, theme, outputSize, assetScale });
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>${css}</style>
+</head>
+<body>
+  <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="liquidRefraction">
+      <feTurbulence type="fractalNoise" baseFrequency="0.015 0.02" numOctaves="2" seed="12" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="8" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="crystalNoise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="22" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.15 0"/>
+    </filter>
+  </svg>
+  <main class="stage" aria-label="${escapeHtml(icon.name)} rendered as crystal liquid icon">
+    <section class="app-icon">
+      <!-- 1. Background Environment -->
+      <div class="env-background"></div>
+      
+      <!-- 2. Base Glass Body -->
+      <div class="base-glass"></div>
+      
+      <!-- 3. Refraction Layer -->
+      <div class="refraction-layer"></div>
+      
+      <!-- 4. Internal Glow Layer -->
+      <div class="internal-glow"></div>
+      
+      <!-- Glyph Container -->
+      <div class="glyph-wrap">${icon.markup}</div>
+      
+      <!-- 5. Specular Reflection Layer -->
+      <div class="specular-reflection"></div>
+      
+      <!-- 6. Edge Caustics -->
+      <div class="edge-caustics"></div>
+      
+      <!-- 7. Spark Highlight Layer -->
+      <div class="spark-highlight">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+          <path d="M50 0 C50 40, 60 50, 100 50 C60 50, 50 60, 50 100 C50 60, 40 50, 0 50 C40 50, 50 40, 50 0 Z" fill="#ffffff" />
+          <circle cx="50" cy="50" r="10" fill="#ffffff" filter="blur(2px)" />
+        </svg>
+      </div>
+      
+      <!-- 8. Final Composite Polish (Noise) -->
+      <div class="composite-polish"></div>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
+function composeCrystalLiquidCss({ icon, theme, outputSize, assetScale }) {
+  const glyphScale = assetScale ?? (icon.metrics.coverage > 0.72 ? 0.57 : 0.64);
+  const mask = icon.maskUri ?? svgToDataUri(icon.svg);
+
+  return `
+:root {
+  --size: ${outputSize}px;
+  --radius: ${Math.round(outputSize * 0.218)}px;
+  
+  --base: ${theme.baseColor};
+  --secondary: ${theme.secondaryColor};
+  --highlight: ${theme.highlightColor};
+  --env: ${theme.environmentColor};
+  
+  --blur: ${theme.blur}px;
+  --opacity: ${theme.opacity};
+  --refraction: ${theme.refraction};
+  --glow: ${theme.glow};
+  --sparkle: ${theme.sparkle};
+  --caustics: ${theme.caustics};
+  --inner-shadow: ${theme.innerShadow};
+  --specular: ${theme.specularIntensity};
+  --edge: ${theme.edgeRim};
+  --noise: ${theme.noiseAmount};
+  
+  --glyph-scale: ${glyphScale};
+}
+
+* { box-sizing: border-box; }
+
+html, body, .stage {
+  width: var(--size);
+  height: var(--size);
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.defs { position: absolute; pointer-events: none; }
+
+.stage {
+  display: grid;
+  place-items: center;
+}
+
+.app-icon {
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  border-radius: var(--radius);
+  isolation: isolate;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+/* 1. Background Environment */
+.env-background {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--env) 80%, var(--secondary)), var(--env) 80%);
+  z-index: 0;
+}
+
+/* 2. Base Glass Body */
+.base-glass {
+  position: absolute;
+  inset: 4%;
+  border-radius: calc(var(--radius) * 0.8);
+  background: color-mix(in srgb, var(--base) calc(var(--opacity) * 100%), transparent);
+  box-shadow: 
+    inset 0 0 calc(var(--size) * 0.1) rgba(0,0,0,var(--inner-shadow)),
+    0 calc(var(--size) * 0.05) calc(var(--size) * 0.1) rgba(0,0,0,0.5);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  z-index: 1;
+}
+
+/* 3. Refraction Layer */
+.refraction-layer {
+  position: absolute;
+  inset: 4%;
+  border-radius: calc(var(--radius) * 0.8);
+  background: 
+    linear-gradient(135deg, rgba(255,255,255,0.2), rgba(0,0,0,0.2) 60%, rgba(255,255,255,0.1));
+  opacity: var(--refraction);
+  mix-blend-mode: overlay;
+  filter: url("#liquidRefraction");
+  z-index: 2;
+}
+
+/* 4. Internal Glow Layer */
+.internal-glow {
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
+  opacity: var(--glow);
+  filter: blur(calc(var(--size) * 0.05));
+  mix-blend-mode: screen;
+  z-index: 3;
+}
+
+/* Glyph Container */
+.glyph-wrap {
+  position: absolute;
+  inset: calc((1 - var(--glyph-scale)) * 50%);
+  display: grid;
+  place-items: center;
+  color: var(--highlight);
+  z-index: 4;
+  filter: drop-shadow(0 calc(var(--size) * 0.02) calc(var(--size) * 0.02) rgba(0,0,0,0.4));
+}
+.glyph-wrap svg,
+.glyph-wrap img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+/* 5. Specular Reflection Layer */
+.specular-reflection {
+  position: absolute;
+  inset: 4%;
+  border-radius: calc(var(--radius) * 0.8);
+  background: 
+    linear-gradient(160deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.1) 30%, transparent 50%);
+  mask-image: linear-gradient(to bottom, black, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+  opacity: var(--specular);
+  mix-blend-mode: screen;
+  z-index: 5;
+}
+
+/* 6. Edge Caustics */
+.edge-caustics {
+  position: absolute;
+  inset: 4%;
+  border-radius: calc(var(--radius) * 0.8);
+  padding: calc(var(--size) * 0.005);
+  background: linear-gradient(135deg, var(--highlight), transparent 40%, var(--secondary) 80%, var(--highlight));
+  opacity: var(--caustics);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  z-index: 6;
+}
+
+/* 7. Spark Highlight Layer */
+.spark-highlight {
+  position: absolute;
+  top: 8%;
+  right: 15%;
+  width: calc(var(--size) * 0.25);
+  height: calc(var(--size) * 0.25);
+  opacity: var(--sparkle);
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 calc(var(--size) * 0.02) var(--highlight));
+  z-index: 7;
+}
+
+.spark-highlight svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* 8. Final Composite Polish (Noise) */
+.composite-polish {
+  position: absolute;
+  inset: 4%;
+  border-radius: calc(var(--radius) * 0.8);
+  filter: url("#crystalNoise");
+  opacity: var(--noise);
+  mix-blend-mode: overlay;
+  z-index: 8;
+  pointer-events: none;
+}
+`;
 }

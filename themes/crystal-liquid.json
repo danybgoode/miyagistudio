@@ -1,0 +1,17 @@
+{
+  "name": "crystal-liquid",
+  "baseColor": "#1DB954",
+  "secondaryColor": "#1ED760",
+  "highlightColor": "#FFFFFF",
+  "environmentColor": "#0A0A0A", 
+  "blur": 40,
+  "opacity": 0.72,
+  "refraction": 0.85,
+  "glow": 0.35,
+  "sparkle": 1.0,
+  "caustics": 0.6,
+  "innerShadow": 0.45,
+  "specularIntensity": 1.0,
+  "edgeRim": 0.6,
+  "noiseAmount": 0.08
+}
