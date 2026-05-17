@@ -3,6 +3,13 @@ import defaultIcon from "../icons/source/miyagi-leaf.svg?raw";
 
 const STANDARD_SIZES = [64, 128, 256, 512, 1024];
 const THEMES = {
+  "crystal-liquid": {
+    bg: ["#0A0A0A", "#151515", "#050505", "#0f0f0f"],
+    glass: "rgba(29, 185, 84, 0.4)",
+    edge: "rgba(255, 255, 255, 0.6)",
+    shadow: "rgba(0, 0, 0, 0.45)",
+    accent: "#FFFFFF"
+  },
   "liquid-glass": {
     bg: ["#dceeff", "#f9f7f1", "#dff6ef", "#c9d8ff"],
     glass: "rgba(255,255,255,.48)",
@@ -93,7 +100,7 @@ dropZone.addEventListener("drop", async (event) => {
 generateButton.addEventListener("click", generateAssets);
 downloadAllButton.addEventListener("click", downloadZip);
 
-applyTheme("liquid-glass");
+applyTheme("crystal-liquid");
 applyAssetScale();
 loadDefaultIcon();
 updateCommand();
