@@ -1,7 +1,7 @@
 import { svgToDataUri } from "./svg-utils.js";
 
-export function composeIconHtml({ icon, theme, outputSize }) {
-  const css = composeCss({ icon, theme, outputSize });
+export function composeIconHtml({ icon, theme, outputSize, assetScale }) {
+  const css = composeCss({ icon, theme, outputSize, assetScale });
 
   return `<!doctype html>
 <html lang="en">
@@ -41,8 +41,8 @@ export function composeIconHtml({ icon, theme, outputSize }) {
 </html>`;
 }
 
-export function composeIconSvg({ icon, theme, outputSize }) {
-  const html = composeIconHtml({ icon, theme, outputSize })
+export function composeIconSvg({ icon, theme, outputSize, assetScale }) {
+  const html = composeIconHtml({ icon, theme, outputSize, assetScale })
     .replace("<!doctype html>", "")
     .replace(/<html[^>]*>|<\/html>|<head>|<\/head>|<body>|<\/body>/g, "");
 
@@ -53,14 +53,14 @@ export function composeIconSvg({ icon, theme, outputSize }) {
 </svg>`;
 }
 
-function composeCss({ icon, theme, outputSize }) {
+function composeCss({ icon, theme, outputSize, assetScale }) {
   const material = theme.material;
   const lighting = theme.lighting;
   const shadow = theme.shadow;
   const palette = theme.palette;
   const light = icon.metrics.light;
   const dominant = icon.metrics.dominantColor;
-  const glyphScale = icon.metrics.coverage > 0.72 ? 0.57 : 0.64;
+  const glyphScale = assetScale ?? (icon.metrics.coverage > 0.72 ? 0.57 : 0.64);
   const mask = icon.maskUri ?? svgToDataUri(icon.svg);
   const gradient = gradientStops(palette.background, dominant);
   const glassStops = gradientStops(palette.glass, "rgba(255,255,255,0.18)");

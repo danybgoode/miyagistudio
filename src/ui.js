@@ -44,6 +44,8 @@ const jobStatus = document.querySelector("#jobStatus");
 const generateButton = document.querySelector("#generateButton");
 const downloadAllButton = document.querySelector("#downloadAllButton");
 const assetList = document.querySelector("#assetList");
+const assetScale = document.querySelector("#assetScale");
+const assetScaleValue = document.querySelector("#assetScaleValue");
 
 let currentAsset;
 let generatedAssets = [];
@@ -51,10 +53,20 @@ let generatedAssets = [];
 themeSelect.addEventListener("change", () => {
   applyTheme(themeSelect.value);
   updateCommand();
+  invalidateGeneratedAssets("Theme updated");
 });
 
 document.querySelectorAll("input[name='size'], input[name='format']").forEach((input) => {
-  input.addEventListener("change", updateCommand);
+  input.addEventListener("change", () => {
+    updateCommand();
+    invalidateGeneratedAssets("Options updated");
+  });
+});
+
+assetScale.addEventListener("input", () => {
+  applyAssetScale();
+  updateCommand();
+  invalidateGeneratedAssets("Scale updated");
 });
 
 assetInput.addEventListener("change", async (event) => {
@@ -82,6 +94,7 @@ generateButton.addEventListener("click", generateAssets);
 downloadAllButton.addEventListener("click", downloadZip);
 
 applyTheme("liquid-glass");
+applyAssetScale();
 loadDefaultIcon();
 updateCommand();
 renderEmptyAssets();
@@ -92,6 +105,12 @@ function applyTheme(name) {
   iconPreview.style.setProperty("--preview-glass", theme.glass);
   iconPreview.style.setProperty("--preview-edge", theme.edge);
   iconPreview.style.setProperty("--preview-shadow", theme.shadow);
+}
+
+function applyAssetScale() {
+  const scale = getAssetScale();
+  iconPreview.style.setProperty("--glyph-scale", scale.toFixed(2));
+  assetScaleValue.value = `${Math.round(scale * 100)}%`;
 }
 
 function loadDefaultIcon() {
@@ -152,6 +171,7 @@ async function loadAssetFile(file) {
 async function generateAssets() {
   const sizes = getSelectedValues("size").map(Number);
   const formats = getSelectedValues("format");
+  const scale = getAssetScale();
 
   if (!currentAsset || !sizes.length || !formats.length) {
     setStatus("Choose a source, size, and format");
@@ -170,12 +190,12 @@ async function generateAssets() {
 
     for (const size of sizes) {
       if (formats.includes("png")) {
-        const blob = await renderPng({ size, image, theme });
+        const blob = await renderPng({ size, image, theme, assetScale: scale });
         generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${themeSelect.value}-${size}.png`, blob));
       }
 
       if (formats.includes("svg")) {
-        const svg = renderSvg({ size, asset: currentAsset, theme });
+        const svg = renderSvg({ size, asset: currentAsset, theme, assetScale: scale });
         const blob = new Blob([svg], { type: "image/svg+xml" });
         generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${themeSelect.value}-${size}.svg`, blob));
       }
@@ -192,19 +212,19 @@ async function generateAssets() {
   }
 }
 
-function renderPng({ size, image, theme }) {
+function renderPng({ size, image, theme, assetScale }) {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
-  drawGlassIcon(ctx, { size, image, theme });
+  drawGlassIcon(ctx, { size, image, theme, assetScale });
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/png");
   });
 }
 
-function drawGlassIcon(ctx, { size, image, theme }) {
+function drawGlassIcon(ctx, { size, image, theme, assetScale }) {
   const radius = size * 0.218;
   roundRect(ctx, 0, 0, size, size, radius);
   ctx.clip();
@@ -234,7 +254,7 @@ function drawGlassIcon(ctx, { size, image, theme }) {
   ctx.strokeStyle = theme.edge;
   ctx.stroke();
 
-  const glyphSize = size * 0.52;
+  const glyphSize = size * assetScale;
   const fit = contain(image.width, image.height, glyphSize, glyphSize);
   const x = (size - fit.width) / 2;
   const y = (size - fit.height) / 2;
@@ -255,9 +275,9 @@ function drawGlassIcon(ctx, { size, image, theme }) {
   ctx.fill();
 }
 
-function renderSvg({ size, asset, theme }) {
+function renderSvg({ size, asset, theme, assetScale }) {
   const radius = Math.round(size * 0.218);
-  const glyph = Math.round(size * 0.52);
+  const glyph = Math.round(size * assetScale);
   const glyphX = Math.round((size - glyph) / 2);
   const glassInset = Math.round(size * 0.058);
   const glassSize = size - glassInset * 2;
@@ -316,6 +336,15 @@ function renderEmptyAssets() {
   assetList.innerHTML = '<div class="asset-empty">Generated assets will appear here.</div>';
 }
 
+function invalidateGeneratedAssets(message) {
+  if (!generatedAssets.length) return;
+  generatedAssets.forEach((asset) => URL.revokeObjectURL(asset.url));
+  generatedAssets = [];
+  downloadAllButton.disabled = true;
+  renderEmptyAssets();
+  setStatus(message);
+}
+
 async function downloadZip() {
   if (!generatedAssets.length) return;
 
@@ -342,7 +371,7 @@ function updateCommand() {
   const theme = themeSelect.value;
   const formats = getSelectedValues("format");
   const formatArg = formats.length ? ` --formats ${formats.join(",")}` : "";
-  commandText.textContent = `node render.js --theme ${theme} --sizes ${sizes.join(",")}${formatArg}`;
+  commandText.textContent = `node render.js --theme ${theme} --sizes ${sizes.join(",")} --asset-scale ${getAssetScale().toFixed(2)}${formatArg}`;
 }
 
 function setStatus(message) {
@@ -381,6 +410,10 @@ function sanitizeSvg(svg) {
 function contain(width, height, maxWidth, maxHeight) {
   const scale = Math.min(maxWidth / width, maxHeight / height);
   return { width: width * scale, height: height * scale };
+}
+
+function getAssetScale() {
+  return Number(assetScale.value) / 100;
 }
 
 function roundRect(ctx, x, y, width, height, radius) {

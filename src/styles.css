@@ -10,6 +10,7 @@
   --preview-glass: rgba(255, 255, 255, 0.48);
   --preview-edge: rgba(255, 255, 255, 0.7);
   --preview-shadow: rgba(39, 59, 88, 0.28);
+  --glyph-scale: 0.56;
 }
 
 * {
@@ -153,10 +154,11 @@ h1 {
 }
 
 .preview-glyph {
-  inset: 24%;
+  inset: calc((1 - var(--glyph-scale)) * 50%);
   display: grid;
   place-items: center;
   filter: drop-shadow(0 16px 22px rgba(13, 24, 38, 0.24));
+  transition: inset 160ms ease;
 }
 
 .preview-glyph svg,
@@ -243,6 +245,31 @@ fieldset {
 
 fieldset:nth-of-type(2) {
   grid-template-columns: repeat(2, 1fr);
+}
+
+.scale-control {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255,255,255,.42);
+}
+
+.scale-control span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.scale-control output {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.scale-control input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
 }
 
 legend {

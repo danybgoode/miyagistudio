@@ -18,6 +18,7 @@ export async function renderBatch(options) {
     themeName,
     sizes,
     scale,
+    assetScale,
     formats,
     exportSvg,
     debugHtml,
@@ -53,6 +54,7 @@ export async function renderBatch(options) {
         outputDir,
         sizes,
         scale,
+        assetScale,
         formats,
         exportSvg,
         debugHtml,
@@ -64,7 +66,7 @@ export async function renderBatch(options) {
   }
 }
 
-async function renderTheme({ browser, theme, sourceFiles, inputDir, outputDir, sizes, scale, formats, exportSvg, debugHtml, concurrency }) {
+async function renderTheme({ browser, theme, sourceFiles, inputDir, outputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml, concurrency }) {
   const themeOutputDir = path.join(outputDir, theme.name);
   await fs.ensureDir(themeOutputDir);
 
@@ -73,14 +75,14 @@ async function renderTheme({ browser, theme, sourceFiles, inputDir, outputDir, s
     while (cursor < sourceFiles.length) {
       const file = sourceFiles[cursor];
       cursor += 1;
-      await renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, formats, exportSvg, debugHtml });
+      await renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml });
     }
   });
 
   await Promise.all(workers);
 }
 
-async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, formats, exportSvg, debugHtml }) {
+async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml }) {
   const icon = await loadIconAsset(file);
   const relative = path.relative(inputDir, file);
   const nestedDir = path.dirname(relative);
@@ -94,7 +96,7 @@ async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes
       const outputSize = Math.round(logicalSize * scale);
       const sizeDir = `${logicalSize}x${logicalSize}`;
       const outputStem = path.join(themeOutputDir, sizeDir, nestedDir === "." ? "" : nestedDir, outputName);
-      const html = composeIconHtml({ icon, theme, outputSize });
+      const html = composeIconHtml({ icon, theme, outputSize, assetScale });
 
       await fs.ensureDir(path.dirname(outputStem));
       await page.setViewport({
@@ -127,7 +129,7 @@ async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes
       }
 
       if (exportSvg) {
-        await fs.writeFile(`${outputStem}.svg`, composeIconSvg({ icon, theme, outputSize }), "utf8");
+        await fs.writeFile(`${outputStem}.svg`, composeIconSvg({ icon, theme, outputSize, assetScale }), "utf8");
       }
 
       if (debugHtml) {
@@ -144,6 +146,7 @@ async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes
 function normalizeOptions(options) {
   const sizes = normalizeSizes(options.sizes, options.size);
   const scale = Number.isFinite(options.scale) ? options.scale : 1;
+  const assetScale = normalizeAssetScale(options.assetScale);
   const concurrency = Number.isFinite(options.concurrency) ? options.concurrency : 2;
   const formats = Array.isArray(options.formats) ? options.formats : ["png", "webp"];
 
@@ -165,9 +168,22 @@ function normalizeOptions(options) {
     ...options,
     sizes,
     scale,
+    assetScale,
     concurrency: Math.max(1, concurrency),
     formats
   };
+}
+
+function normalizeAssetScale(assetScale) {
+  if (assetScale === undefined || Number.isNaN(assetScale)) {
+    return undefined;
+  }
+
+  if (assetScale < 0.35 || assetScale > 0.85) {
+    throw new Error("Asset scale must be between 0.35 and 0.85.");
+  }
+
+  return assetScale;
 }
 
 function normalizeSizes(sizes, legacySize) {

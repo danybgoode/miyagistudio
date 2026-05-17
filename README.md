@@ -19,7 +19,7 @@ Open the local URL printed by Vite to use the minimal preview UI.
 ```bash
 node render.js --theme liquid-glass
 node render.js --theme dark-glass --sizes 64,128,256,512,1024
-node render.js --theme liquid-glass --size 1024 --scale 2
+node render.js --theme liquid-glass --size 1024 --scale 2 --asset-scale 0.62
 node render.js --all-themes --debug-html
 node render.js --list-themes
 ```
@@ -35,6 +35,7 @@ Options:
 | `--sizes <list>` | `64,128,256,512,1024` | Standard output sizes |
 | `--size <px>` | none | Legacy single-size output override |
 | `--scale <factor>` | `1` | Retina multiplier; `--size 1024 --scale 2` writes a 2048px image in the `1024x1024` folder |
+| `--asset-scale <ratio>` | adaptive | Input asset scale inside the glass canvas, from `0.35` to `0.85` |
 | `--formats <list>` | `png,webp,svg` | Export formats |
 | `--no-svg` | `false` | Disable the default self-contained SVG wrapper output |
 | `--debug-html` | `false` | Keep the composed HTML file for inspection |
@@ -106,4 +107,4 @@ npm run build
 
 ## Notes
 
-The web UI supports upload, theme selection, standard size selection, explicit generation, individual downloads, and ZIP download. The production batch path remains the Node.js pipeline, which provides deterministic, high-resolution exports for complete icon packs.
+The web UI supports upload, theme selection, input asset scale, standard size selection, explicit generation, individual downloads, and ZIP download. The production batch path remains the Node.js pipeline, which provides deterministic, high-resolution exports for complete icon packs.

@@ -25,8 +25,21 @@ try {
     throw new Error(`Unexpected title: ${state.title}`);
   }
 
-  if (!state.command?.includes("node render.js --theme liquid-glass --sizes 64,128,256,512,1024")) {
+  if (!state.command?.includes("node render.js --theme liquid-glass --sizes 64,128,256,512,1024 --asset-scale 0.56")) {
     throw new Error(`Unexpected command text: ${state.command}`);
+  }
+
+  await page.$eval("#assetScale", (input) => {
+    input.value = "62";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const scaled = await page.evaluate(() => ({
+    command: document.querySelector("#commandText")?.textContent,
+    value: document.querySelector("#assetScaleValue")?.value
+  }));
+
+  if (!scaled.command?.includes("--asset-scale 0.62") || scaled.value !== "62%") {
+    throw new Error(`Asset scale control did not update correctly: ${JSON.stringify(scaled)}`);
   }
 
   if (!state.hasGlyph) {
