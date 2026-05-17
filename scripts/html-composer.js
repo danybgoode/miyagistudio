@@ -2,7 +2,6 @@ import { svgToDataUri } from "./svg-utils.js";
 
 export function composeIconHtml({ icon, theme, outputSize }) {
   const css = composeCss({ icon, theme, outputSize });
-  const inlineSvg = sanitizeInlineSvg(icon.svg);
 
   return `<!doctype html>
 <html lang="en">
@@ -32,7 +31,7 @@ export function composeIconHtml({ icon, theme, outputSize }) {
       <div class="inner-depth"></div>
       <div class="icon-aura glyph-mask"></div>
       <div class="icon-shadow glyph-mask"></div>
-      <div class="glyph-wrap">${inlineSvg}</div>
+      <div class="glyph-wrap">${icon.markup}</div>
       <div class="specular"></div>
       <div class="reflection"></div>
       <div class="grain"></div>
@@ -62,7 +61,7 @@ function composeCss({ icon, theme, outputSize }) {
   const light = icon.metrics.light;
   const dominant = icon.metrics.dominantColor;
   const glyphScale = icon.metrics.coverage > 0.72 ? 0.57 : 0.64;
-  const mask = svgToDataUri(icon.svg);
+  const mask = icon.maskUri ?? svgToDataUri(icon.svg);
   const gradient = gradientStops(palette.background, dominant);
   const glassStops = gradientStops(palette.glass, "rgba(255,255,255,0.18)");
   const edgeStops = gradientStops(palette.edge, "rgba(255,255,255,0.22)");
@@ -258,7 +257,8 @@ body {
   z-index: 9;
 }
 
-.glyph-wrap svg {
+.glyph-wrap svg,
+.glyph-wrap img {
   width: 100%;
   height: 100%;
   display: block;
@@ -303,13 +303,6 @@ body {
   z-index: 12;
   pointer-events: none;
 }`;
-}
-
-function sanitizeInlineSvg(svg) {
-  return svg
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/\son\w+=["'][^"']*["']/gi, "")
-    .replace("<svg", '<svg role="img" aria-hidden="true" preserveAspectRatio="xMidYMid meet"');
 }
 
 function gradientStops(colors, fallback) {

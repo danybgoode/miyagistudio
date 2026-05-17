@@ -3,6 +3,29 @@ import fs from "fs-extra";
 import sharp from "sharp";
 import { optimize } from "svgo";
 
+const MIME_BY_EXTENSION = new Map([
+  [".svg", "image/svg+xml"],
+  [".png", "image/png"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"]
+]);
+
+export const SUPPORTED_SOURCE_EXTENSIONS = ["svg", "png", "jpg", "jpeg"];
+
+export async function loadIconAsset(file, analysisSize = 512) {
+  const extension = path.extname(file).toLowerCase();
+
+  if (extension === ".svg") {
+    return loadSvgIcon(file, analysisSize);
+  }
+
+  if (MIME_BY_EXTENSION.has(extension)) {
+    return loadRasterIcon(file, analysisSize, MIME_BY_EXTENSION.get(extension));
+  }
+
+  throw new Error(`Unsupported source asset "${file}". Supported inputs: SVG, PNG, JPG, JPEG.`);
+}
+
 export async function loadSvgIcon(file, analysisSize = 512) {
   const rawSvg = await fs.readFile(file, "utf8");
   const optimized = optimize(rawSvg, {
@@ -25,13 +48,39 @@ export async function loadSvgIcon(file, analysisSize = 512) {
   }
 
   const svg = ensureViewBox(optimized.data);
-  const metrics = await analyzeSvg(svg, analysisSize);
+  const dataUri = svgToDataUri(svg);
+  const metrics = await analyzeImage(Buffer.from(svg), analysisSize);
 
   return {
     file,
+    type: "svg",
     name: path.basename(file, path.extname(file)),
+    sourceExtension: "svg",
     svg,
-    dataUri: svgToDataUri(svg),
+    dataUri,
+    maskUri: dataUri,
+    markup: sanitizeInlineSvg(svg),
+    metrics
+  };
+}
+
+async function loadRasterIcon(file, analysisSize, mimeType) {
+  const buffer = await fs.readFile(file);
+  const metadata = await sharp(buffer).metadata();
+  const dataUri = bufferToDataUri(buffer, mimeType);
+  const metrics = await analyzeImage(buffer, analysisSize);
+
+  return {
+    file,
+    type: "raster",
+    name: path.basename(file, path.extname(file)),
+    sourceExtension: path.extname(file).slice(1).toLowerCase(),
+    mimeType,
+    width: metadata.width,
+    height: metadata.height,
+    dataUri,
+    maskUri: dataUri,
+    markup: `<img src="${dataUri}" alt="" width="${metadata.width ?? analysisSize}" height="${metadata.height ?? analysisSize}" decoding="sync">`,
     metrics
   };
 }
@@ -57,9 +106,13 @@ export function svgToDataUri(svg) {
     .replace(/"/g, "%22")}`;
 }
 
-async function analyzeSvg(svg, size) {
-  const { data, info } = await sharp(Buffer.from(svg))
-    .resize(size, size, { fit: "contain" })
+function bufferToDataUri(buffer, mimeType) {
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
+}
+
+async function analyzeImage(input, size) {
+  const { data, info } = await sharp(input, { limitInputPixels: false })
+    .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -131,6 +184,13 @@ async function analyzeSvg(svg, size) {
       shadowY: clamp(24 + (centroid.y - 0.5) * 18, 16, 34)
     }
   };
+}
+
+function sanitizeInlineSvg(svg) {
+  return svg
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/\son\w+=["'][^"']*["']/gi, "")
+    .replace("<svg", '<svg role="img" aria-hidden="true" preserveAspectRatio="xMidYMid meet"');
 }
 
 function rgbToHex(red, green, blue) {

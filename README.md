@@ -1,6 +1,6 @@
 # Miyagi Studio
 
-Miyagi Studio is a Node.js rendering pipeline that transforms flat SVG icons into restrained, premium glassmorphism application icons. It uses Puppeteer for headless Chromium composition, Sharp for image encoding, SVGO for source normalization, and layered HTML/CSS/SVG for the optical material stack.
+Miyagi Studio is a Node.js rendering pipeline that transforms flat SVG, PNG, and JPG icons into restrained, premium glassmorphism application icons. It uses Puppeteer for headless Chromium composition, Sharp for image encoding and source analysis, SVGO for SVG normalization, and layered HTML/CSS/SVG for the optical material stack.
 
 The renderer is tuned toward modern translucent systems such as visionOS, macOS Big Sur, Arc Browser, and Apple Liquid Glass: layered depth, subtle refraction cues, broad highlights, restrained glow, inner shadowing, micro-noise, and geometry-aware lighting.
 
@@ -18,8 +18,9 @@ Open the local URL printed by Vite to use the minimal preview UI.
 
 ```bash
 node render.js --theme liquid-glass
-node render.js --theme dark-glass --size 1024 --scale 2
-node render.js --all-themes --svg --debug-html
+node render.js --theme dark-glass --sizes 64,128,256,512,1024
+node render.js --theme liquid-glass --size 1024 --scale 2
+node render.js --all-themes --debug-html
 node render.js --list-themes
 ```
 
@@ -29,18 +30,28 @@ Options:
 | --- | --- | --- |
 | `--theme <name>` | `liquid-glass` | Theme from `/themes` |
 | `--all-themes` | `false` | Render every theme |
-| `--input <dir>` | `icons/source` | Source SVG folder |
+| `--input <dir>` | `icons/source` | Source SVG, PNG, JPG, or JPEG folder |
 | `--output <dir>` | `renders` | Output folder |
-| `--size <px>` | `1024` | Base output size, minimum 1024 |
-| `--scale <factor>` | `1` | Retina multiplier, for example `2` makes 2048px assets |
-| `--formats <list>` | `png,webp` | Export formats |
-| `--svg` | `false` | Also write a self-contained SVG wrapper |
+| `--sizes <list>` | `64,128,256,512,1024` | Standard output sizes |
+| `--size <px>` | none | Legacy single-size output override |
+| `--scale <factor>` | `1` | Retina multiplier; `--size 1024 --scale 2` writes a 2048px image in the `1024x1024` folder |
+| `--formats <list>` | `png,webp,svg` | Export formats |
+| `--no-svg` | `false` | Disable the default self-contained SVG wrapper output |
 | `--debug-html` | `false` | Keep the composed HTML file for inspection |
+
+By default, PNGs, WebPs, and SVG wrappers are output at standard icon sizes: 64, 128, 256, 512, and 1024px. Output is grouped by theme and size:
+
+```text
+renders/liquid-glass/64x64/icon.png
+renders/liquid-glass/64x64/icon.webp
+renders/liquid-glass/64x64/icon.svg
+renders/liquid-glass/1024x1024/icon.png
+```
 
 ## Project Structure
 
 ```text
-icons/source/        Source SVG icons
+icons/source/        Source SVG, PNG, JPG, and JPEG icons
 themes/              Theme configuration files
 renders/             Generated PNG/WebP/SVG outputs
 temp/                Scratch space for future render stages
@@ -95,4 +106,4 @@ npm run build
 
 ## Notes
 
-The web UI is intentionally small: it previews the theme language and gives operators the exact CLI command. The production render path is the Node.js pipeline, which provides deterministic, high-resolution exports for complete icon packs.
+The web UI supports upload, theme selection, standard size selection, explicit generation, individual downloads, and ZIP download. The production batch path remains the Node.js pipeline, which provides deterministic, high-resolution exports for complete icon packs.

@@ -17,7 +17,7 @@ try {
   const state = await page.evaluate(() => ({
     title: document.querySelector("h1")?.textContent,
     command: document.querySelector("#commandText")?.textContent,
-    hasSvg: Boolean(document.querySelector(".preview-glyph svg")),
+    hasGlyph: Boolean(document.querySelector(".preview-glyph svg, .preview-glyph img")),
     previewBox: document.querySelector(".icon-preview")?.getBoundingClientRect().toJSON()
   }));
 
@@ -25,17 +25,20 @@ try {
     throw new Error(`Unexpected title: ${state.title}`);
   }
 
-  if (!state.command?.includes("node render.js --theme liquid-glass")) {
+  if (!state.command?.includes("node render.js --theme liquid-glass --sizes 64,128,256,512,1024")) {
     throw new Error(`Unexpected command text: ${state.command}`);
   }
 
-  if (!state.hasSvg) {
-    throw new Error("Preview SVG did not load.");
+  if (!state.hasGlyph) {
+    throw new Error("Preview glyph did not load.");
   }
 
   if (!state.previewBox || state.previewBox.width < 320 || state.previewBox.height < 320) {
     throw new Error("Preview icon is not laid out at the expected size.");
   }
+
+  await page.click("#generateButton");
+  await page.waitForFunction(() => document.querySelectorAll(".asset-row").length >= 10, { timeout: 10000 });
 
   await fs.ensureDir("temp");
   await page.screenshot({ path: screenshotPath, fullPage: true });

@@ -5,24 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Miyagi Studio renders flat SVG icons into premium glassmorphism application icons with Node.js, Puppeteer, Sharp, and layered HTML/CSS/SVG composition."
+      content="Miyagi Studio renders SVG, PNG, and JPG icons into premium glassmorphism application icon assets."
     />
     <title>Miyagi Studio</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <main class="shell">
-      <section class="workspace" aria-label="Icon renderer preview">
+      <section class="workspace" aria-label="Glass icon renderer">
         <div class="toolbar">
           <div>
             <h1>Miyagi Studio</h1>
-            <p>Glass icon rendering pipeline</p>
+            <p>Generate glass app icons from SVG, PNG, or JPG sources.</p>
           </div>
-          <a class="button" href="https://github.com/danybgoode/miyagistudio">GitHub</a>
+          <a class="button secondary" href="https://github.com/danybgoode/miyagistudio">GitHub</a>
         </div>
 
         <div class="panels">
-          <section class="preview-panel" aria-label="Live glass preview">
+          <section class="preview-panel" aria-label="Icon preview">
+            <div class="preview-header">
+              <span id="assetName">miyagi-leaf.svg</span>
+              <span id="jobStatus">Ready</span>
+            </div>
             <div class="icon-preview" id="iconPreview">
               <div class="preview-field"></div>
               <div class="preview-glass"></div>
@@ -34,9 +38,9 @@
           </section>
 
           <aside class="control-panel" aria-label="Renderer controls">
-            <label class="drop-zone" for="svgInput">
-              <input id="svgInput" type="file" accept=".svg,image/svg+xml" />
-              <span>Drop SVG or browse</span>
+            <label class="drop-zone" for="assetInput">
+              <input id="assetInput" type="file" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" />
+              <span>Drop SVG, PNG, or JPG</span>
             </label>
 
             <label>
@@ -49,15 +53,30 @@
               </select>
             </label>
 
+            <fieldset>
+              <legend>Sizes</legend>
+              <label><input type="checkbox" name="size" value="64" checked /> 64</label>
+              <label><input type="checkbox" name="size" value="128" checked /> 128</label>
+              <label><input type="checkbox" name="size" value="256" checked /> 256</label>
+              <label><input type="checkbox" name="size" value="512" checked /> 512</label>
+              <label><input type="checkbox" name="size" value="1024" checked /> 1024</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Formats</legend>
+              <label><input type="checkbox" name="format" value="png" checked /> PNG</label>
+              <label><input type="checkbox" name="format" value="svg" checked /> SVG</label>
+            </fieldset>
+
+            <button class="button primary" id="generateButton" type="button">Generate assets</button>
+            <button class="button secondary" id="downloadAllButton" type="button" disabled>Download ZIP</button>
+
             <div class="command">
-              <span>CLI</span>
-              <code id="commandText">node render.js --theme liquid-glass</code>
+              <span>CLI equivalent</span>
+              <code id="commandText">node render.js --theme liquid-glass --sizes 64,128,256,512,1024</code>
             </div>
 
-            <div class="notes">
-              <p>Source SVGs go in <code>icons/source</code>.</p>
-              <p>Production renders are written to <code>renders/&lt;theme&gt;</code> as PNG and WebP.</p>
-            </div>
+            <div class="asset-list" id="assetList" aria-live="polite"></div>
           </aside>
         </div>
       </section>
