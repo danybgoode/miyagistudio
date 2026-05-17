@@ -177,6 +177,51 @@ h1 {
   opacity: .36;
 }
 
+.preview-angular-shine {
+  position: absolute;
+  inset: 6%;
+  border-radius: 22%;
+  background: conic-gradient(from 240deg at 50% -30%, transparent 0deg, rgba(255,255,255,0.4) 15deg, rgba(255,255,255,0.95) 25deg, rgba(255,255,255,0.4) 35deg, transparent 50deg);
+  opacity: 0;
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%);
+  transition: opacity 200ms ease;
+}
+
+.preview-angular-shine.is-active {
+  opacity: 1;
+}
+
+.preview-sparkle {
+  position: absolute;
+  width: 25%;
+  height: 25%;
+  opacity: 0;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
+  transition: all 200ms ease;
+  pointer-events: none;
+}
+
+.preview-sparkle.spark-top-right {
+  top: 8%; right: 15%; opacity: 1;
+}
+.preview-sparkle.spark-top-left {
+  top: 8%; left: 15%; opacity: 1;
+}
+.preview-sparkle.spark-bottom-right {
+  bottom: 12%; right: 15%; opacity: 1;
+}
+.preview-sparkle.spark-bottom-left {
+  bottom: 12%; left: 15%; opacity: 1;
+}
+
+.preview-sparkle svg {
+  width: 100%;
+  height: 100%;
+}
+
 .preview-grain {
   opacity: .09;
   mix-blend-mode: overlay;

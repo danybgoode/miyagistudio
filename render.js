@@ -18,6 +18,8 @@ program
   .option("--no-svg", "Disable self-contained SVG output")
   .option("--debug-html", "Keep the intermediate HTML composition beside rendered assets", false)
   .option("--concurrency <count>", "Icons to render in parallel per Chromium browser", "2")
+  .option("--sparkle-pos <quadrant>", "Position of the sparkle highlight (top-right, top-left, bottom-right, bottom-left, none)", "top-right")
+  .option("--angular-shine", "Enable an angular glass shine highlight")
   .option("--list-themes", "Print available themes and exit", false)
   .parse();
 
@@ -56,5 +58,7 @@ await renderBatch({
   formats,
   exportSvg,
   debugHtml: options.debugHtml,
-  concurrency: Number.parseInt(options.concurrency, 10)
+  concurrency: Number.parseInt(options.concurrency, 10),
+  sparklePos: options.sparklePos,
+  angularShine: options.angularShine
 });

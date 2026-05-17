@@ -22,7 +22,9 @@ export async function renderBatch(options) {
     formats,
     exportSvg,
     debugHtml,
-    concurrency
+    concurrency,
+    sparklePos,
+    angularShine
   } = normalizeOptions(options);
 
   const sourceFiles = await fg(`**/*.{${SUPPORTED_SOURCE_EXTENSIONS.join(",")}}`, {
@@ -58,7 +60,9 @@ export async function renderBatch(options) {
         formats,
         exportSvg,
         debugHtml,
-        concurrency
+        concurrency,
+        sparklePos,
+        angularShine
       });
     }
   } finally {
@@ -66,7 +70,7 @@ export async function renderBatch(options) {
   }
 }
 
-async function renderTheme({ browser, theme, sourceFiles, inputDir, outputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml, concurrency }) {
+async function renderTheme({ browser, theme, sourceFiles, inputDir, outputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml, concurrency, sparklePos, angularShine }) {
   const themeOutputDir = path.join(outputDir, theme.name);
   await fs.ensureDir(themeOutputDir);
 
@@ -75,14 +79,14 @@ async function renderTheme({ browser, theme, sourceFiles, inputDir, outputDir, s
     while (cursor < sourceFiles.length) {
       const file = sourceFiles[cursor];
       cursor += 1;
-      await renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml });
+      await renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml, sparklePos, angularShine });
     }
   });
 
   await Promise.all(workers);
 }
 
-async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml }) {
+async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes, scale, assetScale, formats, exportSvg, debugHtml, sparklePos, angularShine }) {
   const icon = await loadIconAsset(file);
   const relative = path.relative(inputDir, file);
   const nestedDir = path.dirname(relative);
@@ -96,7 +100,7 @@ async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes
       const outputSize = Math.round(logicalSize * scale);
       const sizeDir = `${logicalSize}x${logicalSize}`;
       const outputStem = path.join(themeOutputDir, sizeDir, nestedDir === "." ? "" : nestedDir, outputName);
-      const html = composeIconHtml({ icon, theme, outputSize, assetScale });
+      const html = composeIconHtml({ icon, theme, outputSize, assetScale, sparklePos, angularShine });
 
       await fs.ensureDir(path.dirname(outputStem));
       await page.setViewport({
@@ -129,7 +133,7 @@ async function renderOne({ browser, theme, file, inputDir, themeOutputDir, sizes
       }
 
       if (exportSvg) {
-        await fs.writeFile(`${outputStem}.svg`, composeIconSvg({ icon, theme, outputSize, assetScale }), "utf8");
+        await fs.writeFile(`${outputStem}.svg`, composeIconSvg({ icon, theme, outputSize, assetScale, sparklePos, angularShine }), "utf8");
       }
 
       if (debugHtml) {
@@ -170,7 +174,9 @@ function normalizeOptions(options) {
     scale,
     assetScale,
     concurrency: Math.max(1, concurrency),
-    formats
+    formats,
+    sparklePos: options.sparklePos || "top-right",
+    angularShine: !!options.angularShine
   };
 }
 

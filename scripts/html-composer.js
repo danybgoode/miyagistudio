@@ -1,8 +1,8 @@
 import { svgToDataUri } from "./svg-utils.js";
 
-export function composeIconHtml({ icon, theme, outputSize, assetScale }) {
+export function composeIconHtml({ icon, theme, outputSize, assetScale, sparklePos, angularShine }) {
   if (theme.baseColor) {
-    return composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale });
+    return composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale, sparklePos, angularShine });
   }
 
   const css = composeCss({ icon, theme, outputSize, assetScale });
@@ -45,8 +45,8 @@ export function composeIconHtml({ icon, theme, outputSize, assetScale }) {
 </html>`;
 }
 
-export function composeIconSvg({ icon, theme, outputSize, assetScale }) {
-  const html = (theme.baseColor ? composeCrystalLiquidHtml : composeIconHtml)({ icon, theme, outputSize, assetScale })
+export function composeIconSvg({ icon, theme, outputSize, assetScale, sparklePos, angularShine }) {
+  const html = (theme.baseColor ? composeCrystalLiquidHtml : composeIconHtml)({ icon, theme, outputSize, assetScale, sparklePos, angularShine })
     .replace("<!doctype html>", "")
     .replace(/<html[^>]*>|<\/html>|<head>|<\/head>|<body>|<\/body>/g, "");
 
@@ -323,8 +323,8 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-function composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale }) {
-  const css = composeCrystalLiquidCss({ icon, theme, outputSize, assetScale });
+function composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale, sparklePos, angularShine }) {
+  const css = composeCrystalLiquidCss({ icon, theme, outputSize, assetScale, sparklePos, angularShine });
 
   return `<!doctype html>
 <html lang="en">
@@ -364,16 +364,20 @@ function composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale }) {
       <!-- 5. Specular Reflection Layer -->
       <div class="specular-reflection"></div>
       
+      <!-- Angular Shine Layer -->
+      ${angularShine ? `<div class="angular-shine"></div>` : ''}
+      
       <!-- 6. Edge Caustics -->
       <div class="edge-caustics"></div>
       
       <!-- 7. Spark Highlight Layer -->
-      <div class="spark-highlight">
+      ${sparklePos && sparklePos !== "none" ? `
+      <div class="spark-highlight spark-${sparklePos}">
         <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
           <path d="M50 0 C50 40, 60 50, 100 50 C60 50, 50 60, 50 100 C50 60, 40 50, 0 50 C40 50, 50 40, 50 0 Z" fill="#ffffff" />
           <circle cx="50" cy="50" r="10" fill="#ffffff" filter="blur(2px)" />
         </svg>
-      </div>
+      </div>` : ''}
       
       <!-- 8. Final Composite Polish (Noise) -->
       <div class="composite-polish"></div>
@@ -383,7 +387,7 @@ function composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale }) {
 </html>`;
 }
 
-function composeCrystalLiquidCss({ icon, theme, outputSize, assetScale }) {
+function composeCrystalLiquidCss({ icon, theme, outputSize, assetScale, sparklePos, angularShine }) {
   const glyphScale = assetScale ?? (icon.metrics.coverage > 0.72 ? 0.57 : 0.64);
   const mask = icon.maskUri ?? svgToDataUri(icon.svg);
 
@@ -517,6 +521,19 @@ html, body, .stage {
   z-index: 5;
 }
 
+/* Angular Shine Layer */
+.angular-shine {
+  position: absolute;
+  inset: 4%;
+  border-radius: calc(var(--radius) * 0.8);
+  background: conic-gradient(from 240deg at 50% -30%, transparent 0deg, rgba(255,255,255,0.4) 15deg, rgba(255,255,255,0.95) 25deg, rgba(255,255,255,0.4) 35deg, transparent 50deg);
+  opacity: var(--specular);
+  mix-blend-mode: screen;
+  z-index: 5;
+  mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 90%);
+}
+
 /* 6. Edge Caustics */
 .edge-caustics {
   position: absolute;
@@ -535,14 +552,29 @@ html, body, .stage {
 /* 7. Spark Highlight Layer */
 .spark-highlight {
   position: absolute;
-  top: 8%;
-  right: 15%;
   width: calc(var(--size) * 0.25);
   height: calc(var(--size) * 0.25);
   opacity: var(--sparkle);
   mix-blend-mode: screen;
   filter: drop-shadow(0 0 calc(var(--size) * 0.02) var(--highlight));
   z-index: 7;
+}
+
+.spark-top-right {
+  top: 8%;
+  right: 15%;
+}
+.spark-top-left {
+  top: 8%;
+  left: 15%;
+}
+.spark-bottom-right {
+  bottom: 12%;
+  right: 15%;
+}
+.spark-bottom-left {
+  bottom: 12%;
+  left: 15%;
 }
 
 .spark-highlight svg {

@@ -53,14 +53,42 @@ const downloadAllButton = document.querySelector("#downloadAllButton");
 const assetList = document.querySelector("#assetList");
 const assetScale = document.querySelector("#assetScale");
 const assetScaleValue = document.querySelector("#assetScaleValue");
+const sparklePosSelect = document.querySelector("#sparklePos");
+const angularShineCheckbox = document.querySelector("#angularShine");
+const previewAngularShine = document.querySelector("#previewAngularShine");
+const previewSparkle = document.querySelector("#previewSparkle");
 
 let currentAsset;
 let generatedAssets = [];
+
+function updatePreviewLighting() {
+  if (angularShineCheckbox.checked) {
+    previewAngularShine.classList.add("is-active");
+  } else {
+    previewAngularShine.classList.remove("is-active");
+  }
+  previewSparkle.className = "preview-sparkle";
+  if (sparklePosSelect.value !== "none") {
+    previewSparkle.classList.add(`spark-${sparklePosSelect.value}`);
+  }
+}
 
 themeSelect.addEventListener("change", () => {
   applyTheme(themeSelect.value);
   updateCommand();
   invalidateGeneratedAssets("Theme updated");
+});
+
+sparklePosSelect.addEventListener("change", () => {
+  updatePreviewLighting();
+  updateCommand();
+  invalidateGeneratedAssets("Lighting updated");
+});
+
+angularShineCheckbox.addEventListener("change", () => {
+  updatePreviewLighting();
+  updateCommand();
+  invalidateGeneratedAssets("Lighting updated");
 });
 
 document.querySelectorAll("input[name='size'], input[name='format']").forEach((input) => {
@@ -112,6 +140,7 @@ function applyTheme(name) {
   iconPreview.style.setProperty("--preview-glass", theme.glass);
   iconPreview.style.setProperty("--preview-edge", theme.edge);
   iconPreview.style.setProperty("--preview-shadow", theme.shadow);
+  updatePreviewLighting();
 }
 
 function applyAssetScale() {
@@ -194,15 +223,17 @@ async function generateAssets() {
   try {
     const image = await loadImage(currentAsset.dataUri);
     const theme = THEMES[themeSelect.value];
+    const sparklePos = sparklePosSelect.value;
+    const angularShine = angularShineCheckbox.checked;
 
     for (const size of sizes) {
       if (formats.includes("png")) {
-        const blob = await renderPng({ size, image, theme, assetScale: scale });
+        const blob = await renderPng({ size, image, theme, assetScale: scale, sparklePos, angularShine });
         generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${themeSelect.value}-${size}.png`, blob));
       }
 
       if (formats.includes("svg")) {
-        const svg = renderSvg({ size, asset: currentAsset, theme, assetScale: scale });
+        const svg = renderSvg({ size, asset: currentAsset, theme, assetScale: scale, sparklePos, angularShine });
         const blob = new Blob([svg], { type: "image/svg+xml" });
         generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${themeSelect.value}-${size}.svg`, blob));
       }
@@ -219,19 +250,19 @@ async function generateAssets() {
   }
 }
 
-function renderPng({ size, image, theme, assetScale }) {
+function renderPng({ size, image, theme, assetScale, sparklePos, angularShine }) {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
-  drawGlassIcon(ctx, { size, image, theme, assetScale });
+  drawGlassIcon(ctx, { size, image, theme, assetScale, sparklePos, angularShine });
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/png");
   });
 }
 
-function drawGlassIcon(ctx, { size, image, theme, assetScale }) {
+function drawGlassIcon(ctx, { size, image, theme, assetScale, sparklePos, angularShine }) {
   const radius = size * 0.218;
   roundRect(ctx, 0, 0, size, size, radius);
   ctx.clip();
@@ -273,26 +304,72 @@ function drawGlassIcon(ctx, { size, image, theme, assetScale }) {
   ctx.drawImage(image, x, y, fit.width, fit.height);
   ctx.restore();
 
-  const shine = ctx.createLinearGradient(size * 0.18, size * 0.12, size * 0.78, size * 0.38);
-  shine.addColorStop(0, "rgba(255,255,255,.74)");
-  shine.addColorStop(0.52, "rgba(255,255,255,.2)");
-  shine.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = shine;
-  roundRect(ctx, size * 0.09, size * 0.08, size * 0.78, size * 0.28, size * 0.16);
-  ctx.fill();
+  if (angularShine) {
+    ctx.save();
+    roundRect(ctx, size * 0.058, size * 0.058, size * 0.884, size * 0.884, radius * 0.72);
+    ctx.clip();
+    const grad = ctx.createLinearGradient(0, 0, size * 0.8, size * 0.5);
+    grad.addColorStop(0, "rgba(255,255,255,0.7)");
+    grad.addColorStop(0.4, "rgba(255,255,255,0.1)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    ctx.restore();
+  } else {
+    const shine = ctx.createLinearGradient(size * 0.18, size * 0.12, size * 0.78, size * 0.38);
+    shine.addColorStop(0, "rgba(255,255,255,.74)");
+    shine.addColorStop(0.52, "rgba(255,255,255,.2)");
+    shine.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = shine;
+    roundRect(ctx, size * 0.09, size * 0.08, size * 0.78, size * 0.28, size * 0.16);
+    ctx.fill();
+  }
+
+  if (sparklePos !== "none") {
+    let sx = size * 0.8, sy = size * 0.2;
+    if (sparklePos === "top-left") { sx = size * 0.2; }
+    else if (sparklePos === "bottom-right") { sy = size * 0.8; }
+    else if (sparklePos === "bottom-left") { sx = size * 0.2; sy = size * 0.8; }
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.shadowColor = "#fff";
+    ctx.shadowBlur = size * 0.03;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    const r1 = size * 0.12, r2 = size * 0.015;
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const r = i % 2 === 0 ? r1 : r2;
+      ctx.lineTo(r * Math.cos(a), r * Math.sin(a));
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
-function renderSvg({ size, asset, theme, assetScale }) {
+function renderSvg({ size, asset, theme, assetScale, sparklePos, angularShine }) {
   const radius = Math.round(size * 0.218);
   const glyph = Math.round(size * assetScale);
   const glyphX = Math.round((size - glyph) / 2);
   const glassInset = Math.round(size * 0.058);
   const glassSize = size - glassInset * 2;
   const stops = theme.bg.map((color, index) => `<stop offset="${index / (theme.bg.length - 1)}" stop-color="${color}"/>`).join("");
+  
+  let sx = size * 0.8, sy = size * 0.2;
+  if (sparklePos === "top-left") { sx = size * 0.2; }
+  else if (sparklePos === "bottom-right") { sy = size * 0.8; }
+  else if (sparklePos === "bottom-left") { sx = size * 0.2; sy = size * 0.8; }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">${stops}</linearGradient>
+    <linearGradient id="angular" x1="0" y1="0" x2="0.8" y2="0.5">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset=".4" stop-color="#fff" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
     <radialGradient id="bloom" cx=".35" cy=".25" r=".58">
       <stop offset="0" stop-color="#fff" stop-opacity=".72"/>
       <stop offset="1" stop-color="#fff" stop-opacity="0"/>
@@ -301,6 +378,7 @@ function renderSvg({ size, asset, theme, assetScale }) {
       <feDropShadow dx="0" dy="${Math.round(size * 0.032)}" stdDeviation="${Math.round(size * 0.035)}" flood-color="#263b58" flood-opacity=".28"/>
     </filter>
     <clipPath id="iconClip"><rect width="${size}" height="${size}" rx="${radius}"/></clipPath>
+    <clipPath id="glassClip"><rect x="${glassInset}" y="${glassInset}" width="${glassSize}" height="${glassSize}" rx="${Math.round(radius * 0.72)}"/></clipPath>
   </defs>
   <g clip-path="url(#iconClip)">
     <rect width="${size}" height="${size}" fill="url(#bg)"/>
@@ -308,7 +386,14 @@ function renderSvg({ size, asset, theme, assetScale }) {
     <rect x="${glassInset}" y="${glassInset}" width="${glassSize}" height="${glassSize}" rx="${Math.round(radius * 0.72)}" fill="${theme.glass}" filter="url(#softShadow)"/>
     <rect x="${glassInset}" y="${glassInset}" width="${glassSize}" height="${glassSize}" rx="${Math.round(radius * 0.72)}" fill="none" stroke="${theme.edge}" stroke-width="${Math.max(1, Math.round(size * 0.004))}"/>
     <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet"/>
-    <path d="M ${size * 0.12} ${size * 0.2} C ${size * 0.26} ${size * 0.06}, ${size * 0.62} ${size * 0.08}, ${size * 0.82} ${size * 0.22}" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="${Math.max(2, size * 0.035)}" stroke-linecap="round"/>
+    ${angularShine ? 
+      `<rect x="${glassInset}" y="${glassInset}" width="${glassSize}" height="${glassSize}" fill="url(#angular)" clip-path="url(#glassClip)"/>` :
+      `<path d="M ${size * 0.12} ${size * 0.2} C ${size * 0.26} ${size * 0.06}, ${size * 0.62} ${size * 0.08}, ${size * 0.82} ${size * 0.22}" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="${Math.max(2, size * 0.035)}" stroke-linecap="round"/>`
+    }
+    ${sparklePos && sparklePos !== "none" ? 
+      `<path d="M ${sx} ${sy - size*0.12} C ${sx} ${sy - size*0.04}, ${sx + size*0.04} ${sy}, ${sx + size*0.12} ${sy} C ${sx + size*0.04} ${sy}, ${sx} ${sy + size*0.04}, ${sx} ${sy + size*0.12} C ${sx} ${sy + size*0.04}, ${sx - size*0.04} ${sy}, ${sx - size*0.12} ${sy} C ${sx - size*0.04} ${sy}, ${sx} ${sy - size*0.04}, ${sx} ${sy - size*0.12} Z" fill="#ffffff" filter="drop-shadow(0 0 4px #fff)"/>
+       <circle cx="${sx}" cy="${sy}" r="${size*0.02}" fill="#ffffff" filter="blur(2px)"/>` : ''
+    }
   </g>
 </svg>`;
 }
@@ -378,7 +463,9 @@ function updateCommand() {
   const theme = themeSelect.value;
   const formats = getSelectedValues("format");
   const formatArg = formats.length ? ` --formats ${formats.join(",")}` : "";
-  commandText.textContent = `node render.js --theme ${theme} --sizes ${sizes.join(",")} --asset-scale ${getAssetScale().toFixed(2)}${formatArg}`;
+  const sparkle = sparklePosSelect.value !== "top-right" ? ` --sparkle-pos ${sparklePosSelect.value}` : "";
+  const angular = angularShineCheckbox.checked ? " --angular-shine" : "";
+  commandText.textContent = `node render.js --theme ${theme} --sizes ${sizes.join(",")} --asset-scale ${getAssetScale().toFixed(2)}${formatArg}${sparkle}${angular}`;
 }
 
 function setStatus(message) {
