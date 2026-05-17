@@ -1,3 +1,5 @@
+import defaultIcon from "../icons/source/miyagi-leaf.svg?raw";
+
 const THEMES = {
   "liquid-glass": {
     bg: ["#dceeff", "#f9f7f1", "#dff6ef", "#c9d8ff"],
@@ -56,9 +58,8 @@ dropZone.addEventListener("drop", async (event) => {
 
 applyTheme("liquid-glass");
 
-async function loadDefaultIcon() {
-  const response = await fetch("/icons/source/miyagi-leaf.svg");
-  previewGlyph.innerHTML = await response.text();
+function loadDefaultIcon() {
+  previewGlyph.innerHTML = defaultIcon;
 }
 
 function applyTheme(name) {
