@@ -13,7 +13,7 @@ program
   .option("-s, --size <px>", "Render one legacy output size in pixels")
   .option("--sizes <list>", "Comma-separated output sizes in pixels", "64,128,256,512,1024")
   .option("--scale <factor>", "Retina scale multiplier", "1")
-  .option("--asset-scale <ratio>", "Input asset scale inside the glass canvas, from 0.35 to 0.85")
+  .option("--asset-scale <ratio>", "Input asset scale inside the glass canvas, from 0.35 to 0.99")
   .option("--formats <list>", "Comma-separated output formats: png,webp,svg", "png,webp,svg")
   .option("--no-svg", "Disable self-contained SVG output")
   .option("--debug-html", "Keep the intermediate HTML composition beside rendered assets", false)

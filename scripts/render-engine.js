@@ -179,8 +179,8 @@ function normalizeAssetScale(assetScale) {
     return undefined;
   }
 
-  if (assetScale < 0.35 || assetScale > 0.85) {
-    throw new Error("Asset scale must be between 0.35 and 0.85.");
+  if (assetScale < 0.35 || assetScale > 0.99) {
+    throw new Error("Asset scale must be between 0.35 and 0.99.");
   }
 
   return assetScale;
