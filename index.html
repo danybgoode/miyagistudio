@@ -5,90 +5,251 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Miyagi Studio renders SVG, PNG, and JPG icons into premium glassmorphism application icon assets."
+      content="Miyagi Studio - A premium glassmorphic application icon engine enhanced by Google Gemini AI."
     />
-    <title>Miyagi Studio</title>
+    <title>Miyagi Studio | AI-Enhanced Luxury Asset Engine</title>
+    <!-- Google Fonts for elevated luxury styling -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;550;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="workspace" aria-label="Glass icon renderer">
-        <div class="toolbar">
-          <div>
-            <h1>Miyagi Studio</h1>
-            <p>Generate glass app icons from SVG, PNG, or JPG sources.</p>
-          </div>
-          <a class="button secondary" href="https://github.com/danybgoode/miyagistudio">GitHub</a>
-        </div>
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-        <div class="panels">
-          <section class="preview-panel" aria-label="Icon preview">
-            <div class="preview-header">
-              <span id="assetName">miyagi-leaf.svg</span>
-              <span id="jobStatus">Ready</span>
+    <main class="shell">
+      <section class="workspace" aria-label="Glass icon renderer workspace">
+        
+        <!-- Header / Toolbar -->
+        <header class="toolbar">
+          <div class="branding">
+            <div class="logo-area">
+              <span class="logo-leaf">🍃</span>
+              <h1>Miyagi Studio</h1>
             </div>
-            <div class="icon-preview" id="iconPreview">
-              <div class="preview-field"></div>
-              <div class="preview-glass"></div>
-              <div class="preview-edge"></div>
-              <div class="preview-glyph" id="previewGlyph"></div>
-              <div class="preview-shine"></div>
-              <div class="preview-grain"></div>
+            <p>Streamline luxury asset production combining deterministic engine physics and Gemini AI.</p>
+          </div>
+          <div class="header-actions">
+            <button type="button" class="button secondary settings-btn" id="openSettingsBtn" aria-label="Open API settings">
+              <span class="btn-icon">⚙️</span> Gemini Setup
+            </button>
+            <a class="button secondary github-btn" href="https://github.com/danybgoode/miyagistudio" target="_blank" rel="noopener">GitHub</a>
+          </div>
+        </header>
+
+        <!-- Main Workspace Panels -->
+        <div class="panels">
+          
+          <!-- Left Panel: Preview Frame -->
+          <section class="preview-panel" aria-label="Icon preview canvas">
+            <div class="preview-header">
+              <div class="file-info">
+                <span id="assetName">miyagi-leaf.svg</span>
+                <span class="separator">•</span>
+                <span id="jobStatus">Ready</span>
+              </div>
+              <!-- AI Active Badge -->
+              <div id="aiActiveBadge" class="ai-active-badge hidden">
+                <span class="pulse-dot"></span> Gemini Enhanced
+              </div>
+            </div>
+            
+            <div class="preview-stage">
+              <!-- Glassmorphism Comparison Container -->
+              <div class="icon-preview-container" id="previewContainer">
+                <div class="icon-preview" id="iconPreview" data-renderer="liquid-glass">
+                  <div class="preview-field"></div>
+                  <div class="preview-glass"></div>
+                  <div class="preview-edge"></div>
+                  <div class="preview-glyph-aura" id="previewGlyphAura"></div>
+                  <div class="preview-glyph-shadow" id="previewGlyphShadow"></div>
+                  <div class="preview-glyph" id="previewGlyph"></div>
+                  <div class="preview-shine"></div>
+                  <div class="preview-grain"></div>
+                </div>
+            </div>
+            <div class="preview-bg-selector">
+              <span class="selector-label">Backdrop:</span>
+              <button type="button" class="bg-opt active" data-bg="luxury" title="Luxury mesh background">🌌</button>
+              <button type="button" class="bg-opt" data-bg="light" title="Pristine light background">☀️</button>
+              <button type="button" class="bg-opt" data-bg="obsidian" title="Obsidian dark background">🌑</button>
+              <button type="button" class="bg-opt" data-bg="mockup" title="Home screen simulation">📱</button>
             </div>
           </section>
 
-          <aside class="control-panel" aria-label="Renderer controls">
-            <label class="drop-zone" for="assetInput">
+          <!-- Right Panel: Design & Output Controls -->
+          <aside class="control-panel" aria-label="Renderer console controls">
+            
+            <!-- Asset File Drop Zone -->
+            <label class="drop-zone" for="assetInput" id="dropZoneLabel">
               <input id="assetInput" type="file" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" />
-              <span>Drop SVG, PNG, or JPG</span>
+              <div class="drop-content">
+                <span class="drop-icon">📤</span>
+                <span class="drop-text">Drop SVG, PNG, or JPG</span>
+                <span class="drop-subtext">Optimized for high-res vector glyphs</span>
+              </div>
             </label>
 
-            <label>
-              Theme
-              <select id="themeSelect">
-                <option value="liquid-glass">Liquid glass</option>
-                <option value="discomorphism">Discomorphism</option>
-                <option value="chrome-metallic">Chrome metallic</option>
-                <option value="crystal-liquid">Crystal liquid</option>
-                <option value="dark-glass">Dark glass</option>
-                <option value="frosted-light">Frosted light</option>
-                <option value="holographic-subtle">Holographic subtle</option>
-              </select>
-            </label>
+            <!-- Mode Selector Preset Tabs -->
+            <div class="control-group">
+              <span class="control-label">Asset Pack Type</span>
+              <div class="preset-selector">
+                <button type="button" class="preset-btn active" id="singleAssetPreset">Single Assets</button>
+                <button type="button" class="preset-btn" id="webPackPreset">Full Web Pack</button>
+              </div>
+            </div>
 
-            <fieldset>
-              <legend>Sizes</legend>
-              <label><input type="checkbox" name="size" value="64" checked /> 64</label>
-              <label><input type="checkbox" name="size" value="128" checked /> 128</label>
-              <label><input type="checkbox" name="size" value="256" checked /> 256</label>
-              <label><input type="checkbox" name="size" value="512" checked /> 512</label>
-              <label><input type="checkbox" name="size" value="1024" checked /> 1024</label>
-            </fieldset>
+            <!-- Standard Design Controls (Collapsed partially in AI mode) -->
+            <div id="standardControlsGroup" class="standard-controls-group">
+              <label>
+                Theme Base
+                <select id="themeSelect">
+                  <option value="liquid-glass">Liquid glass (Light Apple-Glass)</option>
+                  <option value="crystal-liquid">Crystal liquid (Iridescent Emerald)</option>
+                  <option value="discomorphism">Discomorphism (Iridescent Tile)</option>
+                  <option value="chrome-metallic">Chrome metallic (Silver-Purple Metal)</option>
+                  <option value="dark-glass">Dark glass (Slate Frosted)</option>
+                  <option value="frosted-light">Frosted light (Pristine Frost)</option>
+                  <option value="holographic-subtle">Holographic subtle (Pastel Vapor)</option>
+                </select>
+              </label>
 
-            <label class="scale-control">
-              <span>Asset scale <output id="assetScaleValue">56%</output></span>
-              <input id="assetScale" type="range" min="40" max="99" value="56" />
-            </label>
+              <label class="scale-control">
+                <span>Asset scale <output id="assetScaleValue">56%</output></span>
+                <input id="assetScale" type="range" min="40" max="99" value="56" />
+              </label>
 
-            <fieldset>
-              <legend>Formats</legend>
-              <label><input type="checkbox" name="format" value="png" checked /> PNG</label>
-              <label><input type="checkbox" name="format" value="svg" checked /> SVG</label>
-            </fieldset>
+              <!-- Conditional Single Formats Settings -->
+              <div id="singleSizesSelector" class="single-sizes-selector">
+                <fieldset>
+                  <legend>Sizes</legend>
+                  <label><input type="checkbox" name="size" value="64" checked /> 64</label>
+                  <label><input type="checkbox" name="size" value="128" checked /> 128</label>
+                  <label><input type="checkbox" name="size" value="256" checked /> 256</label>
+                  <label><input type="checkbox" name="size" value="512" checked /> 512</label>
+                  <label><input type="checkbox" name="size" value="1024" checked /> 1024</label>
+                </fieldset>
 
+                <fieldset>
+                  <legend>Formats</legend>
+                  <label><input type="checkbox" name="format" value="png" checked /> PNG</label>
+                  <label><input type="checkbox" name="format" value="svg" checked /> SVG</label>
+                </fieldset>
+              </div>
+            </div>
+
+            <!-- Dynamic Web Asset Pack Folder Explorer Tree -->
+            <div id="webPackExplorer" class="web-pack-explorer hidden">
+              <div class="explorer-header">
+                <span>Planned Production Directory</span>
+                <span class="explorer-version">v1.0</span>
+              </div>
+              <div class="explorer-tree">
+                <div class="tree-item"><span class="tree-icon">📁</span> favicons/</div>
+                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon.ico <span class="badge">Legacy</span></div>
+                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon-16x16.png <span class="badge">Standard</span></div>
+                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon-32x32.png <span class="badge">Standard</span></div>
+                <div class="tree-item"><span class="tree-icon">📁</span> mobile/</div>
+                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> apple-touch-icon.png <span class="badge-apple">180px iOS</span></div>
+                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> android-chrome-192x192.png <span class="badge-android">192px</span></div>
+                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> android-chrome-512x512.png <span class="badge-android">512px</span></div>
+                <div class="tree-item"><span class="tree-icon">📁</span> desktop/</div>
+                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> mstile-150x150.png <span class="badge-win">Windows</span></div>
+                <div class="tree-item"><span class="tree-icon">📁</span> marketing/</div>
+                <div class="tree-item indent"><span class="tree-icon text-gold">📄</span> og-image.png <span class="badge-og">1200x630 Showcase</span></div>
+                <div class="tree-item"><span class="tree-icon text-purple">📄</span> site.webmanifest <span class="badge-manifest">JSON</span></div>
+              </div>
+            </div>
+
+            <!-- AI Engine Customizer Panel -->
+            <div class="ai-console">
+              <div class="ai-console-header">
+                <div class="ai-label">
+                  <span class="ai-sparkle">✨</span>
+                  <span>Gemini AI Enhancer</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="aiEnabledToggle" />
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              
+              <div id="aiConsoleContent" class="ai-console-content collapsed">
+                <p class="ai-description">Enhance, re-color, and customize lighting gradients using Google Gemini. Enter a styling prompt or select a preset.</p>
+                <textarea id="aiPrompt" placeholder="What custom visual style or adjustments do you want to inject? (e.g. 'frozen cyberpunk ice with magenta glow and deep shadows')"></textarea>
+                
+                <div class="preset-chips" aria-label="Style prompt presets">
+                  <button type="button" class="chip" data-prompt="cyberpunk neon with glowing purple base, hot pink light leaks, and radioactive green glass edge">Cyberpunk</button>
+                  <button type="button" class="chip" data-prompt="liquid gold plating with high metallic specular reflections, gold leaf caustics, and deep dark obsidian framing">Liquid Gold</button>
+                  <button type="button" class="chip" data-prompt="matte ceramic porcelain plates in soft pastel peach and mint, with clean uniform low-contrast shadows">Matte Ceramic</button>
+                  <button type="button" class="chip" data-prompt="frosted emerald ice with cold mist caustics, white sparkling highlights, and high glass blur">Frosted Ice</button>
+                  <button type="button" class="chip" data-prompt="holographic synthwave sunset with pastel pink and violet glass gradients, and warm glowing backlights">Vaporwave</button>
+                </div>
+                
+                <button type="button" id="applyAiStylesBtn" class="button primary-glow">Apply AI Enhancements</button>
+                <div id="aiProgressMessage" class="ai-progress-message hidden">
+                  <span class="spinner"></span> <span>Consulting Gemini...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Generate Action Buttons -->
             <button class="button primary" id="generateButton" type="button">Generate assets</button>
             <button class="button secondary" id="downloadAllButton" type="button" disabled>Download ZIP</button>
 
+            <!-- copyable head tag block (reveals on web pack gen) -->
+            <div id="integrationCodeBlock" class="integration-code-block hidden">
+              <div class="code-header">
+                <span>HTML Integration Code</span>
+                <button type="button" id="copyHeadTagsBtn" class="copy-btn">Copy</button>
+              </div>
+              <pre><code id="headTagsCode">&lt;!-- Code will render here --&gt;</code></pre>
+            </div>
+
+            <!-- CLI equivalent feedback -->
             <div class="command">
               <span>CLI equivalent</span>
               <code id="commandText">node render.js --theme liquid-glass --sizes 64,128,256,512,1024</code>
             </div>
 
-            <div class="asset-list" id="assetList" aria-live="polite"></div>
+            <!-- Generated Assets List -->
+            <div class="asset-list-container">
+              <span class="control-label">Generated Assets</span>
+              <div class="asset-list" id="assetList" aria-live="polite"></div>
+            </div>
+
           </aside>
         </div>
       </section>
     </main>
+
+    <!-- Slide drawer or Modal: Gemini API Key Setup -->
+    <div id="settingsOverlay" class="settings-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="modalTitle">
+      <div class="settings-modal">
+        <button type="button" class="close-modal-btn" id="closeSettingsBtn" aria-label="Close setup modal">×</button>
+        <h3 id="modalTitle">Gemini API Configuration</h3>
+        <p class="modal-description">Enable the real-time AI styling engine by entering your Gemini API key. Your key is stored 100% locally in your browser's secure cache (`localStorage`) and never touches our servers.</p>
+        
+        <form id="apiKeyForm" onsubmit="event.preventDefault();" class="settings-form">
+          <!-- Hidden username field to satisfy accessibility password managers -->
+          <input type="text" name="username" autocomplete="username" style="display: none;" aria-hidden="true" />
+          <div class="input-group">
+            <input type="password" id="apiKeyInput" placeholder="Enter Gemini API key..." autocomplete="current-password" aria-label="Gemini API Key" />
+            <button type="button" id="toggleKeyVisibility" class="button secondary icon-btn" aria-label="Toggle password visibility">👁️</button>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" id="useTestKeyBtn" class="button secondary">Use My Test Key</button>
+            <button type="button" id="testKeyBtn" class="button secondary">Test Connection</button>
+            <button type="submit" id="saveKeyBtn" class="button primary">Save & Close</button>
+          </div>
+        </form>
+        
+        <div id="apiStatusMessage" class="api-status-message"></div>
+      </div>
+    </div>
+    
     <script type="module" src="/src/ui.js"></script>
   </body>
 </html>

@@ -11,6 +11,8 @@ const browser = await puppeteer.launch({
 
 try {
   const page = await browser.newPage();
+  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+  page.on('pageerror', err => console.error('PAGE ERROR:', err));
   await page.setViewport({ width: 1440, height: 980, deviceScaleFactor: 1 });
   await page.goto(url, { waitUntil: "networkidle0" });
 
