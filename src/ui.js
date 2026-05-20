@@ -270,7 +270,7 @@ applyAiStylesBtn.addEventListener("click", async () => {
   setStatus("Consulting Gemini AI...");
   
   try {
-    const generatedTheme = await fetchAiTheme(prompt, savedKey);
+    const generatedTheme = await fetchAiTheme(prompt, themeSelect.value, savedKey);
     customAiTheme = normalizeThemeObject(generatedTheme);
     
     applyThemeObject(customAiTheme);
@@ -403,34 +403,62 @@ function updateAiToggleState() {
   }
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error(`Connection timed out after ${timeoutMs / 1000} seconds. Please verify your API key or try again.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 async function validateGeminiKey(key) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: "Respond 'OK' if you hear me." }] }]
     })
-  });
+  }, 10000); // 10s timeout for quick connection check
+  
   if (!response.ok) return false;
   const result = await response.json();
   const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
   return text && text.toLowerCase().includes("ok");
 }
 
-async function fetchAiTheme(prompt, key) {
+async function fetchAiTheme(prompt, baseThemeKey, key) {
+  const baseTheme = THEMES[baseThemeKey] || THEMES["liquid-glass"];
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
   
   const systemPrompt = `
 You are a master digital designer specializing in glassmorphic, neomorphic, and metallic UI themes. You generate highly polished theme variables for a standard visual renderer.
-Given a user style request, you will return a strictly valid JSON object that contains the properties required to render this premium aesthetic.
-The JSON format must match one of our four renderers: 'glass' (standard glassmorphism), 'crystal-liquid', 'discomorphism', or 'chrome-metallic'.
+Given a user style request and a "Core Theme Base" context, you will return a strictly valid JSON object that contains the properties required to render this premium aesthetic.
+
+Your task is to refine, enhance, or transform the provided Core Theme Base according to the user's styling request. The output JSON format must match one of our four renderers: 'glass' (standard glassmorphism), 'crystal-liquid', 'discomorphism', or 'chrome-metallic'.
+
+The active Core Theme Base is of type '${baseTheme.renderer}' with name '${baseThemeKey}'. Its current values are:
+${JSON.stringify(baseTheme, null, 2)}
+
+You can decide to keep the same renderer type or switch to a different renderer ('glass', 'crystal-liquid', 'discomorphism', or 'chrome-metallic') if the user's request warrants it.
 
 For 'glass' renderer, you must specify:
 {
   "renderer": "glass",
   "name": "A short premium name",
-  "description": "A professional design description",
+  "description": "A professional design description explaining the design choices",
   "bg": ["#color1", "#color2", ...], // 2-4 hex or rgb colors forming a gorgeous gradient
   "glass": "rgba(...) or #...", // the main fill of the glass plate (translucent)
   "edge": "rgba(...) or #...", // the shiny bevel highlight border color
@@ -490,7 +518,7 @@ Make sure the output colors are exceptionally beautiful, premium, HSL or HEX for
 Respond ONLY with raw valid JSON. Do not include markdown code block formatting (such as \`\`\`json).
 `;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -501,7 +529,7 @@ Respond ONLY with raw valid JSON. Do not include markdown code block formatting 
         responseMimeType: "application/json"
       }
     })
-  });
+  }, 15000); // 15s timeout for AI theme generation
 
   if (!response.ok) {
     const err = await response.json();
@@ -655,6 +683,16 @@ async function generateAssets() {
     return;
   }
 
+  const progressContainer = document.querySelector("#generationProgressContainer");
+  const progressBar = document.querySelector("#progressBar");
+  const progressPercentage = document.querySelector("#progressPercentage");
+  const progressStepsList = document.querySelector("#progressStepsList");
+
+  if (!progressContainer || !progressBar || !progressPercentage || !progressStepsList) {
+    console.error("Progress console elements are missing in HTML.");
+    return;
+  }
+
   generatedAssets = [];
   assetList.innerHTML = "";
   generateButton.disabled = true;
@@ -662,6 +700,15 @@ async function generateAssets() {
   integrationCodeBlock.classList.add("hidden");
   setStatus("Generating assets...");
   showToast("Rendering engine starting...", "info");
+
+  // Show progress widget
+  progressContainer.classList.remove("hidden");
+  progressBar.style.width = "0%";
+  progressPercentage.textContent = "0%";
+  progressStepsList.innerHTML = "";
+
+  let currentRunningIndex = 0;
+  const steps = [];
 
   try {
     const image = await loadImage(currentAsset.dataUri);
@@ -678,77 +725,174 @@ async function generateAssets() {
         showToast("Select at least one size and format.", "error");
         setStatus("Sizes or formats missing");
         generateButton.disabled = false;
+        progressContainer.classList.add("hidden");
         return;
       }
 
       for (const size of sizes) {
         if (formats.includes("png")) {
-          const blob = await renderPng({ size, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${theme.renderer}-${size}.png`, blob));
+          steps.push({
+            label: `Render PNG Icon (${size}x${size})`,
+            run: async () => {
+              const blob = await renderPng({ size, image, theme, assetScale: scale });
+              generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${theme.renderer}-${size}.png`, blob));
+            }
+          });
         }
 
         if (formats.includes("svg")) {
-          const svg = renderSvg({ size, asset: currentAsset, theme, assetScale: scale });
-          const blob = new Blob([svg], { type: "image/svg+xml" });
-          generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${theme.renderer}-${size}.svg`, blob));
+          steps.push({
+            label: `Render SVG Icon (${size}x${size})`,
+            run: async () => {
+              const svg = renderSvg({ size, asset: currentAsset, theme, assetScale: scale });
+              const blob = new Blob([svg], { type: "image/svg+xml" });
+              generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${theme.renderer}-${size}.svg`, blob));
+            }
+          });
         }
       }
     } else {
       // Full Web Asset Pack Preset
-      showToast("Rendering Apple, Android, Favicons, and OG showcases...", "info");
-
       // 1. Favicons
-      const fav16 = await renderPng({ size: 16, image, theme, assetScale: scale });
-      generatedAssets.push(createGeneratedAsset("favicons/favicon-16x16.png", fav16));
+      steps.push({
+        label: "Render Standard Favicons (16x16, 32x32, ICO)",
+        run: async () => {
+          const fav16 = await renderPng({ size: 16, image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("favicons/favicon-16x16.png", fav16));
 
-      const fav32 = await renderPng({ size: 32, image, theme, assetScale: scale });
-      generatedAssets.push(createGeneratedAsset("favicons/favicon-32x32.png", fav32));
-      
-      const icoBlob = await createIcoFromPng(fav32);
-      generatedAssets.push(createGeneratedAsset("favicons/favicon.ico", icoBlob));
+          const fav32 = await renderPng({ size: 32, image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("favicons/favicon-32x32.png", fav32));
+          
+          const icoBlob = await createIcoFromPng(fav32);
+          generatedAssets.push(createGeneratedAsset("favicons/favicon.ico", icoBlob));
+        }
+      });
 
-      // 2. Mobile launch
-      const appleTouch = await renderPng({ size: 180, image, theme, assetScale: scale });
-      generatedAssets.push(createGeneratedAsset("mobile/apple-touch-icon.png", appleTouch));
+      // 2. iOS Launcher
+      steps.push({
+        label: "Render iOS Launcher Icon (apple-touch-icon.png)",
+        run: async () => {
+          const appleTouch = await renderPng({ size: 180, image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("mobile/apple-touch-icon.png", appleTouch));
+        }
+      });
 
-      const android192 = await renderPng({ size: 192, image, theme, assetScale: scale });
-      generatedAssets.push(createGeneratedAsset("mobile/android-chrome-192x192.png", android192));
+      // 3. Android Launchers
+      steps.push({
+        label: "Render Android Launchers (192x192 & 512x512)",
+        run: async () => {
+          const android192 = await renderPng({ size: 192, image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("mobile/android-chrome-192x192.png", android192));
 
-      const android512 = await renderPng({ size: 512, image, theme, assetScale: scale });
-      generatedAssets.push(createGeneratedAsset("mobile/android-chrome-512x512.png", android512));
+          const android512 = await renderPng({ size: 512, image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("mobile/android-chrome-512x512.png", android512));
+        }
+      });
 
-      // 3. Desktop Windows
-      const winTile = await renderPng({ size: 150, image, theme, assetScale: scale });
-      generatedAssets.push(createGeneratedAsset("desktop/mstile-150x150.png", winTile));
+      // 4. Windows Tile
+      steps.push({
+        label: "Render Windows Tile (mstile-150x150.png)",
+        run: async () => {
+          const winTile = await renderPng({ size: 150, image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("desktop/mstile-150x150.png", winTile));
+        }
+      });
 
-      // 4. Premium Open Graph Image
-      const ogBanner = await renderOgImage({ image, theme, assetScale: scale });
-      generatedAssets.push(createGeneratedAsset("marketing/og-image.png", ogBanner));
+      // 5. Marketing Banner
+      steps.push({
+        label: "Render Showcase Marketing Banner (og-image.png)",
+        run: async () => {
+          const ogBanner = await renderOgImage({ image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("marketing/og-image.png", ogBanner));
+        }
+      });
 
-      // 5. site.webmanifest JSON
-      const manifest = JSON.stringify({
-        name: currentAsset.name,
-        short_name: currentAsset.name.slice(0, 12),
-        icons: [
-          { src: "/mobile/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "/mobile/android-chrome-512x512.png", sizes: "512x512", type: "image/png" }
-        ],
-        theme_color: theme.bg?.[0] || "#ffffff",
-        background_color: "#08090d",
-        display: "standalone"
-      }, null, 2);
-      generatedAssets.push(createGeneratedAsset("site.webmanifest", new Blob([manifest], { type: "application/json" })));
+      // 6. Web Manifest & HTML Integration Tags
+      steps.push({
+        label: "Generate Web App Manifest & HTML Tags",
+        run: async () => {
+          const themeColor = theme.bg?.[0] || theme.background?.[0] || "#ffffff";
+          const manifest = JSON.stringify({
+            name: currentAsset.name,
+            short_name: currentAsset.name.slice(0, 12),
+            icons: [
+              { src: "/mobile/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+              { src: "/mobile/android-chrome-512x512.png", sizes: "512x512", type: "image/png" }
+            ],
+            theme_color: themeColor,
+            background_color: "#08090d",
+            display: "standalone"
+          }, null, 2);
+          generatedAssets.push(createGeneratedAsset("site.webmanifest", new Blob([manifest], { type: "application/json" })));
 
-      // 6. Generate copied Head tags
-      renderHeadIntegrationSnippet(theme);
+          // Render integration HTML code
+          renderHeadIntegrationSnippet(theme);
+        }
+      });
     }
 
-    renderGeneratedAssets();
+    // Add a final step to finalize the bundle and update UI
+    steps.push({
+      label: "Compile and Ready Output Pack",
+      run: async () => {
+        renderGeneratedAssets();
+      }
+    });
+
+    // Populate steps list in HTML
+    steps.forEach((step, index) => {
+      const li = document.createElement("li");
+      li.className = "progress-step-item pending";
+      li.id = `progress-step-${index}`;
+      li.innerHTML = `
+        <span class="step-icon">⏳</span>
+        <span class="step-label">${step.label}</span>
+      `;
+      progressStepsList.append(li);
+    });
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    // Run steps sequentially with a small delay so browser paints
+    for (let i = 0; i < steps.length; i++) {
+      currentRunningIndex = i;
+      const stepElement = document.querySelector(`#progress-step-${i}`);
+      if (stepElement) {
+        stepElement.className = "progress-step-item active";
+        stepElement.querySelector(".step-icon").textContent = "⚙️";
+      }
+
+      // Give browser time to paint "active" state
+      await delay(120);
+
+      // Run the step action
+      await steps[i].run();
+
+      if (stepElement) {
+        stepElement.className = "progress-step-item success";
+        stepElement.querySelector(".step-icon").textContent = "✅";
+      }
+
+      // Calculate and update progress percentage & progress bar
+      const percent = Math.round(((i + 1) / steps.length) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressPercentage.textContent = `${percent}%`;
+      
+      // Set status message
+      setStatus(`Processed ${i + 1}/${steps.length} milestones`);
+    }
+
     setStatus(`${generatedAssets.length} assets ready`);
     showToast(`Successfully rendered ${generatedAssets.length} assets!`, "success");
     downloadAllButton.disabled = generatedAssets.length === 0;
+
   } catch (error) {
     console.error(error);
+    const failedElement = document.querySelector(`#progress-step-${currentRunningIndex}`);
+    if (failedElement) {
+      failedElement.className = "progress-step-item error";
+      failedElement.querySelector(".step-icon").textContent = "❌";
+    }
     showToast("Generation pipeline encountered an error.", "error");
     setStatus("Generation failed");
   } finally {
