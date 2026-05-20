@@ -1,5 +1,6 @@
 {
   "name": "frosted-light",
+  "renderer": "glass",
   "description": "Soft light material with milky translucency, low contrast, and broad highlights.",
   "material": {
     "blurRadius": 44,

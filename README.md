@@ -1,6 +1,6 @@
 # Miyagi Studio
 
-Miyagi Studio is a Node.js rendering pipeline that transforms flat SVG, PNG, and JPG icons into restrained, premium glassmorphism application icons. It uses Puppeteer for headless Chromium composition, Sharp for image encoding and source analysis, SVGO for SVG normalization, and layered HTML/CSS/SVG for the optical material stack.
+Miyagi Studio is a Node.js rendering pipeline that transforms flat SVG, PNG, and JPG icons into premium application icons across glass, discomorphism, and metallic styles. It uses Puppeteer for headless Chromium composition, Sharp for image encoding and source analysis, SVGO for SVG normalization, and layered HTML/CSS/SVG for the optical material stack.
 
 The renderer is tuned toward modern translucent systems such as visionOS, macOS Big Sur, Arc Browser, and Apple Liquid Glass: layered depth, subtle refraction cues, broad highlights, restrained glow, inner shadowing, micro-noise, and geometry-aware lighting.
 
@@ -18,6 +18,8 @@ Open the local URL printed by Vite to use the minimal preview UI.
 
 ```bash
 node render.js --theme liquid-glass
+node render.js --theme discomorphism --sizes 64,128,256,512,1024 --asset-scale 0.99 --formats png,svg
+node render.js --theme chrome-metallic --sizes 64,128,256,512,1024 --asset-scale 0.62 --formats png,webp,svg
 node render.js --theme dark-glass --sizes 64,128,256,512,1024
 node render.js --theme liquid-glass --size 1024 --scale 2 --asset-scale 0.62
 node render.js --all-themes --debug-html
@@ -35,7 +37,7 @@ Options:
 | `--sizes <list>` | `64,128,256,512,1024` | Standard output sizes |
 | `--size <px>` | none | Legacy single-size output override |
 | `--scale <factor>` | `1` | Retina multiplier; `--size 1024 --scale 2` writes a 2048px image in the `1024x1024` folder |
-| `--asset-scale <ratio>` | adaptive | Input asset scale inside the glass canvas, from `0.35` to `0.85` |
+| `--asset-scale <ratio>` | adaptive | Input asset scale inside the icon canvas, from `0.35` to `0.99` |
 | `--formats <list>` | `png,webp,svg` | Export formats |
 | `--no-svg` | `false` | Disable the default self-contained SVG wrapper output |
 | `--debug-html` | `false` | Keep the composed HTML file for inspection |
@@ -80,11 +82,16 @@ Each icon is rendered as a stack of purposeful layers:
 Built-in themes:
 
 - `liquid-glass`
+- `discomorphism`
+- `chrome-metallic`
+- `crystal-liquid`
 - `dark-glass`
 - `frosted-light`
 - `holographic-subtle`
 
-Themes control blur radius, glass opacity, gradients, lighting intensity, background palette, shadow softness, reflection strength, and material noise.
+Themes control the renderer style plus material parameters such as blur, gradients, lighting, tile sampling, chrome bands, background palette, shadow softness, reflections, and material noise.
+
+`discomorphism` and `chrome-metallic` are deterministic renderers, not AI image-to-image transformations. Discomorphism samples the input into a mirror-tile grid and applies disco lighting while preserving the original structure. Chrome metallic masks the input into silver-blue/purple metal bands and works best with transparent SVG/PNG logo marks; JPG backgrounds are treated as part of the source image.
 
 ## Local Development
 

@@ -1,8 +1,18 @@
 import { svgToDataUri } from "./svg-utils.js";
 
 export function composeIconHtml({ icon, theme, outputSize, assetScale }) {
-  if (theme.baseColor) {
+  const renderer = getThemeRenderer(theme);
+
+  if (renderer === "crystal-liquid") {
     return composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale });
+  }
+
+  if (renderer === "discomorphism") {
+    return composeDiscomorphismHtml({ icon, theme, outputSize, assetScale });
+  }
+
+  if (renderer === "chrome-metallic") {
+    return composeChromeMetallicHtml({ icon, theme, outputSize, assetScale });
   }
 
   const css = composeCss({ icon, theme, outputSize, assetScale });
@@ -46,7 +56,7 @@ export function composeIconHtml({ icon, theme, outputSize, assetScale }) {
 }
 
 export function composeIconSvg({ icon, theme, outputSize, assetScale }) {
-  const html = (theme.baseColor ? composeCrystalLiquidHtml : composeIconHtml)({ icon, theme, outputSize, assetScale })
+  const html = composeIconHtml({ icon, theme, outputSize, assetScale })
     .replace("<!doctype html>", "")
     .replace(/<html[^>]*>|<\/html>|<head>|<\/head>|<body>|<\/body>/g, "");
 
@@ -55,6 +65,10 @@ export function composeIconSvg({ icon, theme, outputSize, assetScale }) {
     <div xmlns="http://www.w3.org/1999/xhtml">${html}</div>
   </foreignObject>
 </svg>`;
+}
+
+function getThemeRenderer(theme) {
+  return theme.renderer ?? (theme.baseColor ? "crystal-liquid" : "glass");
 }
 
 function composeCss({ icon, theme, outputSize, assetScale }) {
@@ -562,4 +576,418 @@ html, body, .stage {
   pointer-events: none;
 }
 `;
+}
+
+function composeDiscomorphismHtml({ icon, theme, outputSize, assetScale }) {
+  const css = composeDiscomorphismCss({ icon, theme, outputSize, assetScale });
+  const tiles = renderDiscoTiles(icon.metrics.tileMap);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>${css}</style>
+</head>
+<body>
+  <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="discoNoise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="31" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .16 0"/>
+    </filter>
+  </svg>
+  <main class="stage" aria-label="${escapeHtml(icon.name)} rendered as discomorphism icon">
+    <section class="app-icon">
+      <div class="disco-bg"></div>
+      <div class="disco-rim"></div>
+      <div class="disco-glow cyan"></div>
+      <div class="disco-glow magenta"></div>
+      <div class="tile-shadow"></div>
+      <div class="tile-wrap">
+        <div class="tile-grid">${tiles}</div>
+        <img class="source-ink" src="${icon.dataUri}" alt="">
+      </div>
+      <div class="disco-spark s1"></div>
+      <div class="disco-spark s2"></div>
+      <div class="disco-spark s3"></div>
+      <div class="disco-polish"></div>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
+function composeDiscomorphismCss({ icon, theme, outputSize, assetScale }) {
+  const glyphScale = assetScale ?? theme.defaultAssetScale ?? 0.99;
+  const tileMap = icon.metrics.tileMap;
+  const background = gradientStops(theme.background, "#08090d");
+  const rim = gradientStops(theme.edge, "#7dd8c5");
+  const lights = theme.lights ?? ["#35e5ff", "#d65cff", "#f8e8a4"];
+
+  return `
+:root {
+  --size: ${outputSize}px;
+  --radius: ${Math.round(outputSize * 0.218)}px;
+  --glyph-scale: ${glyphScale};
+  --cols: ${tileMap.columns};
+  --rows: ${tileMap.rows};
+  --gap: max(1px, calc(var(--size) * ${(theme.gap ?? 0.09) / 100}));
+  --tile-radius: max(1px, calc(var(--size) * ${(theme.tileRadius ?? 0.14) / 100}));
+}
+
+* { box-sizing: border-box; }
+html, body, .stage {
+  width: var(--size);
+  height: var(--size);
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+.defs { position: absolute; pointer-events: none; }
+.stage { display: grid; place-items: center; }
+
+.app-icon {
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  border-radius: var(--radius);
+  overflow: hidden;
+  isolation: isolate;
+  background: #08090d;
+}
+
+.disco-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 78%, color-mix(in srgb, ${lights[0]} 52%, transparent), transparent 0 34%),
+    radial-gradient(circle at 82% 24%, color-mix(in srgb, ${lights[1]} 46%, transparent), transparent 0 31%),
+    radial-gradient(circle at 52% 16%, color-mix(in srgb, ${lights[2]} 38%, transparent), transparent 0 28%),
+    linear-gradient(145deg, ${background});
+  z-index: 0;
+}
+
+.disco-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: max(2px, calc(var(--size) * 0.007));
+  background: linear-gradient(135deg, ${rim});
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  opacity: ${theme.rimIntensity ?? 0.9};
+  z-index: 5;
+}
+
+.disco-glow {
+  position: absolute;
+  width: 42%;
+  height: 42%;
+  border-radius: 50%;
+  filter: blur(calc(var(--size) * 0.055));
+  mix-blend-mode: screen;
+  opacity: ${theme.glow ?? 0.42};
+  z-index: 1;
+}
+.disco-glow.cyan { left: -10%; bottom: 18%; background: ${lights[0]}; }
+.disco-glow.magenta { right: -8%; top: 12%; background: ${lights[1]}; }
+
+.tile-shadow {
+  position: absolute;
+  inset: calc((1 - var(--glyph-scale)) * 50%);
+  border-radius: calc(var(--radius) * 0.32);
+  box-shadow: 0 calc(var(--size) * 0.035) calc(var(--size) * 0.08) rgba(0,0,0,.48);
+  z-index: 2;
+}
+
+.tile-wrap {
+  position: absolute;
+  inset: calc((1 - var(--glyph-scale)) * 50%);
+  display: grid;
+  overflow: hidden;
+  border-radius: calc(var(--radius) * 0.24);
+  filter:
+    drop-shadow(0 calc(var(--size) * 0.014) calc(var(--size) * 0.025) rgba(0,0,0,.42))
+    drop-shadow(0 0 calc(var(--size) * 0.02) color-mix(in srgb, ${lights[0]} 35%, transparent));
+  z-index: 3;
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+  gap: var(--gap);
+  background: rgba(4,6,12,.72);
+}
+
+.tile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--tile-radius);
+  background:
+    linear-gradient(142deg, rgba(255,255,255,.84), rgba(255,255,255,.12) 18%, rgba(0,0,0,.18) 52%, rgba(255,255,255,.48)),
+    radial-gradient(circle at var(--sx) var(--sy), rgba(255,255,255,.92), transparent 0 38%),
+    linear-gradient(135deg, color-mix(in srgb, var(--tile-color) 78%, ${lights[0]} 22%), color-mix(in srgb, var(--tile-color) 70%, ${lights[1]} 30%));
+  box-shadow:
+    inset 0 0 0 max(.5px, calc(var(--size) * .0009)) rgba(255,255,255,.46),
+    inset 0 calc(var(--size) * .002) calc(var(--size) * .004) rgba(255,255,255,.32),
+    inset 0 calc(var(--size) * -.004) calc(var(--size) * .007) rgba(0,0,0,.42);
+  opacity: var(--alpha);
+}
+
+.source-ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  opacity: .22;
+  filter: contrast(1.34) saturate(.78);
+  pointer-events: none;
+}
+
+.disco-spark {
+  position: absolute;
+  width: calc(var(--size) * .1);
+  height: calc(var(--size) * .1);
+  background: white;
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
+  filter: drop-shadow(0 0 calc(var(--size) * .018) white) drop-shadow(0 0 calc(var(--size) * .035) ${lights[1]});
+  opacity: ${theme.sparkle ?? 0.75};
+  mix-blend-mode: screen;
+  z-index: 6;
+}
+.disco-spark.s1 { right: 15%; top: 10%; transform: rotate(12deg) scale(.72); }
+.disco-spark.s2 { left: 16%; top: 44%; transform: rotate(-18deg) scale(.44); opacity: .46; }
+.disco-spark.s3 { right: 36%; bottom: 18%; transform: rotate(28deg) scale(.38); opacity: .36; }
+
+.disco-polish {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.18), transparent 34%),
+    radial-gradient(circle at 50% -10%, rgba(255,255,255,.32), transparent 0 36%);
+  filter: url("#discoNoise");
+  mix-blend-mode: overlay;
+  opacity: .42;
+  pointer-events: none;
+  z-index: 7;
+}`;
+}
+
+function composeChromeMetallicHtml({ icon, theme, outputSize, assetScale }) {
+  const css = composeChromeMetallicCss({ icon, theme, outputSize, assetScale });
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>${css}</style>
+</head>
+<body>
+  <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="chromeWarp">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018 0.026" numOctaves="2" seed="44" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="chromeNoise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="3" seed="45" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .12 0"/>
+    </filter>
+  </svg>
+  <main class="stage" aria-label="${escapeHtml(icon.name)} rendered as chrome metallic icon">
+    <section class="app-icon">
+      <div class="chrome-bg"></div>
+      <div class="chrome-card"></div>
+      <div class="chrome-glow"></div>
+      <div class="metal-shadow glyph-mask"></div>
+      <div class="metal-fill glyph-mask"></div>
+      <div class="metal-bands glyph-mask"></div>
+      <div class="metal-edge glyph-mask"></div>
+      <div class="source-lines">${icon.markup}</div>
+      <div class="chrome-star s1"></div>
+      <div class="chrome-star s2"></div>
+      <div class="chrome-polish"></div>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
+function composeChromeMetallicCss({ icon, theme, outputSize, assetScale }) {
+  const glyphScale = assetScale ?? theme.defaultAssetScale ?? 0.62;
+  const mask = icon.maskUri ?? svgToDataUri(icon.svg);
+  const background = gradientStops(theme.background, "#090a11");
+  const metal = gradientStops(theme.metal, "#f8fbff");
+  const accent = theme.accent ?? ["#546fff", "#d856ff", "#ffffff"];
+
+  return `
+:root {
+  --size: ${outputSize}px;
+  --radius: ${Math.round(outputSize * 0.218)}px;
+  --glyph-scale: ${glyphScale};
+  --mask: url("${mask}");
+}
+
+* { box-sizing: border-box; }
+html, body, .stage {
+  width: var(--size);
+  height: var(--size);
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+.defs { position: absolute; pointer-events: none; }
+.stage { display: grid; place-items: center; }
+.app-icon {
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  border-radius: var(--radius);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.chrome-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 74%, color-mix(in srgb, ${accent[1]} 48%, transparent), transparent 0 36%),
+    radial-gradient(circle at 20% 12%, color-mix(in srgb, ${accent[0]} 36%, transparent), transparent 0 31%),
+    linear-gradient(145deg, ${background});
+  z-index: 0;
+}
+
+.chrome-card {
+  position: absolute;
+  inset: 5%;
+  border-radius: calc(var(--radius) * .78);
+  background:
+    radial-gradient(circle at 50% 74%, rgba(214,86,255,.26), transparent 0 38%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.015) 36%, rgba(0,0,0,.3));
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,.28),
+    inset 0 calc(var(--size) * -.025) calc(var(--size) * .05) rgba(0,0,0,.56),
+    0 calc(var(--size) * .03) calc(var(--size) * .07) rgba(0,0,0,${theme.shadow ?? 0.44});
+  z-index: 1;
+}
+
+.chrome-glow {
+  position: absolute;
+  inset: 25% 18% 10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, ${accent[1]}, transparent 70%);
+  filter: blur(calc(var(--size) * .055));
+  opacity: ${theme.glow ?? 0.46};
+  mix-blend-mode: screen;
+  z-index: 2;
+}
+
+.glyph-mask,
+.source-lines {
+  position: absolute;
+  inset: calc((1 - var(--glyph-scale)) * 50%);
+  mask-image: var(--mask);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-image: var(--mask);
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.metal-shadow {
+  background: rgba(0,0,0,.68);
+  filter: blur(calc(var(--size) * .016));
+  transform: translateY(calc(var(--size) * .022));
+  opacity: .68;
+  z-index: 3;
+}
+
+.metal-fill {
+  background:
+    linear-gradient(118deg, ${metal}),
+    radial-gradient(circle at 35% 18%, #ffffff, transparent 0 28%),
+    radial-gradient(circle at 78% 74%, ${accent[1]}, transparent 0 36%);
+  filter: saturate(1.14) contrast(1.13) url("#chromeWarp");
+  z-index: 4;
+}
+
+.metal-bands {
+  background:
+    linear-gradient(102deg, transparent 0 14%, rgba(255,255,255,.9) 18%, transparent 24%, rgba(70,88,255,.54) 39%, transparent 47%, rgba(255,86,226,.62) 61%, transparent 72%, rgba(255,255,255,.82) 84%, transparent 100%),
+    linear-gradient(12deg, rgba(255,255,255,.2), rgba(0,0,0,.36), rgba(255,255,255,.24));
+  mix-blend-mode: screen;
+  opacity: .86;
+  z-index: 5;
+}
+
+.metal-edge {
+  background:
+    radial-gradient(circle at 44% 18%, rgba(255,255,255,.95), transparent 0 30%),
+    linear-gradient(135deg, rgba(255,255,255,.82), transparent 30%, rgba(0,0,0,.42) 58%, rgba(255,255,255,.72));
+  filter: drop-shadow(0 0 calc(var(--size) * .012) rgba(255,255,255,.72));
+  mix-blend-mode: overlay;
+  opacity: ${theme.bevel ?? 0.78};
+  z-index: 6;
+}
+
+.source-lines {
+  display: grid;
+  place-items: center;
+  mask-image: none;
+  -webkit-mask-image: none;
+  opacity: .24;
+  mix-blend-mode: multiply;
+  filter: contrast(1.6) grayscale(1);
+  z-index: 7;
+}
+.source-lines svg,
+.source-lines img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.chrome-star {
+  position: absolute;
+  width: calc(var(--size) * .09);
+  height: calc(var(--size) * .09);
+  background: white;
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
+  filter: drop-shadow(0 0 calc(var(--size) * .012) white) drop-shadow(0 0 calc(var(--size) * .03) ${accent[1]});
+  opacity: ${theme.sparkle ?? 0.82};
+  mix-blend-mode: screen;
+  z-index: 8;
+}
+.chrome-star.s1 { right: 26%; top: 16%; transform: rotate(18deg); }
+.chrome-star.s2 { right: 31%; bottom: 29%; transform: rotate(-8deg) scale(.66); }
+
+.chrome-polish {
+  position: absolute;
+  inset: 5%;
+  border-radius: calc(var(--radius) * .78);
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.24), transparent 28%),
+    radial-gradient(circle at 50% 110%, rgba(255,86,226,.22), transparent 0 42%);
+  filter: url("#chromeNoise");
+  mix-blend-mode: screen;
+  opacity: .44;
+  pointer-events: none;
+  z-index: 9;
+}`;
+}
+
+function renderDiscoTiles(tileMap) {
+  return tileMap.tiles.map((tile) => {
+    const shineX = 24 + ((tile.x * 17 + tile.y * 7) % 58);
+    const shineY = 18 + ((tile.y * 13 + tile.x * 11) % 62);
+    return `<span class="tile" style="--tile-color: rgb(${tile.r} ${tile.g} ${tile.b}); --alpha: ${tile.a}; --sx: ${shineX}%; --sy: ${shineY}%"></span>`;
+  }).join("");
 }

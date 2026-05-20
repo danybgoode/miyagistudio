@@ -1,0 +1,15 @@
+{
+  "name": "discomorphism",
+  "renderer": "discomorphism",
+  "description": "Disco-mirror mosaic material with dark app framing, iridescent rim light, sampled mirrored tiles, and restrained club lighting.",
+  "defaultAssetScale": 0.99,
+  "tileCount": 34,
+  "gap": 0.09,
+  "tileRadius": 0.14,
+  "rimIntensity": 0.9,
+  "glow": 0.42,
+  "sparkle": 0.75,
+  "background": ["#11151b", "#07090f", "#181925", "#07080d"],
+  "lights": ["#35e5ff", "#d65cff", "#f8e8a4", "#5b8cff", "#62ffcd"],
+  "edge": ["#3b67c8", "#7dd8c5", "#b9a7ff"]
+}

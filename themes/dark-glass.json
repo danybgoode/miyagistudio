@@ -1,5 +1,6 @@
 {
   "name": "dark-glass",
+  "renderer": "glass",
   "description": "Dimensional dark glass with controlled contrast, cool reflections, and low ambient bloom.",
   "material": {
     "blurRadius": 38,

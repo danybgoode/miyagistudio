@@ -1,5 +1,6 @@
 {
   "name": "crystal-liquid",
+  "renderer": "crystal-liquid",
   "baseColor": "#1DB954",
   "secondaryColor": "#1ED760",
   "highlightColor": "#FFFFFF",

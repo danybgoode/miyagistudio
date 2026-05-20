@@ -29,6 +29,24 @@ try {
     throw new Error(`Unexpected command text: ${state.command}`);
   }
 
+  await page.select("#themeSelect", "discomorphism");
+  const discoScale = await page.$eval("#assetScaleValue", (output) => output.value);
+  if (discoScale !== "99%") {
+    throw new Error(`Discomorphism did not apply recommended scale: ${discoScale}`);
+  }
+
+  await page.select("#themeSelect", "chrome-metallic");
+  const chromeScale = await page.$eval("#assetScaleValue", (output) => output.value);
+  if (chromeScale !== "62%") {
+    throw new Error(`Chrome metallic did not apply recommended scale: ${chromeScale}`);
+  }
+
+  await page.select("#themeSelect", "liquid-glass");
+  const glassScale = await page.$eval("#assetScaleValue", (output) => output.value);
+  if (glassScale !== "56%") {
+    throw new Error(`Liquid glass did not restore recommended scale: ${glassScale}`);
+  }
+
   await page.$eval("#assetScale", (input) => {
     input.value = "62";
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -50,6 +68,14 @@ try {
     throw new Error("Preview icon is not laid out at the expected size.");
   }
 
+  await page.click("#generateButton");
+  await page.waitForFunction(() => document.querySelectorAll(".asset-row").length >= 10, { timeout: 10000 });
+
+  await page.select("#themeSelect", "discomorphism");
+  await page.click("#generateButton");
+  await page.waitForFunction(() => document.querySelectorAll(".asset-row").length >= 10, { timeout: 10000 });
+
+  await page.select("#themeSelect", "chrome-metallic");
   await page.click("#generateButton");
   await page.waitForFunction(() => document.querySelectorAll(".asset-row").length >= 10, { timeout: 10000 });
 

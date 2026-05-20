@@ -3,6 +3,7 @@ import fs from "fs-extra";
 import fg from "fast-glob";
 
 const REQUIRED_THEME_KEYS = ["name", "material", "lighting", "shadow", "palette"];
+const RENDERERS = new Set(["glass", "crystal-liquid", "discomorphism", "chrome-metallic"]);
 
 export async function listThemes(themeDir = "themes") {
   const files = await fg("*.json", { cwd: themeDir, absolute: true, onlyFiles: true });
@@ -31,9 +32,35 @@ export async function loadTheme(name, themeDir = "themes") {
 }
 
 function validateTheme(theme, file) {
-  if (theme.baseColor) {
+  if (theme.renderer && !RENDERERS.has(theme.renderer)) {
+    throw new Error(`Theme file ${file} has unsupported renderer "${theme.renderer}".`);
+  }
+
+  const renderer = theme.renderer ?? (theme.baseColor ? "crystal-liquid" : "glass");
+
+  if (renderer === "crystal-liquid") {
     // Crystal Liquid schema
     const required = ["name", "baseColor", "secondaryColor", "highlightColor", "environmentColor"];
+    for (const key of required) {
+      if (theme[key] === undefined) {
+        throw new Error(`Theme file ${file} is missing required key "${key}".`);
+      }
+    }
+    return;
+  }
+
+  if (renderer === "discomorphism") {
+    const required = ["name", "background", "lights", "edge"];
+    for (const key of required) {
+      if (theme[key] === undefined) {
+        throw new Error(`Theme file ${file} is missing required key "${key}".`);
+      }
+    }
+    return;
+  }
+
+  if (renderer === "chrome-metallic") {
+    const required = ["name", "background", "metal", "accent"];
     for (const key of required) {
       if (theme[key] === undefined) {
         throw new Error(`Theme file ${file} is missing required key "${key}".`);

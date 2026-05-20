@@ -1,5 +1,6 @@
 {
   "name": "holographic-subtle",
+  "renderer": "glass",
   "description": "Quiet spectral glass with restrained iridescence and soft colored refractions.",
   "material": {
     "blurRadius": 34,

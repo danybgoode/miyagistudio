@@ -182,7 +182,37 @@ async function analyzeImage(input, size) {
       y: clamp(0.22 + (0.5 - centroid.y) * 0.16, 0.16, 0.34),
       shadowX: clamp((centroid.x - 0.5) * 28, -12, 12),
       shadowY: clamp(24 + (centroid.y - 0.5) * 18, 16, 34)
+    },
+    tileMap: await createTileMap(input)
+  };
+}
+
+async function createTileMap(input, tileCount = 34) {
+  const { data, info } = await sharp(input, { limitInputPixels: false })
+    .resize(tileCount, tileCount, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const tiles = [];
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      const offset = (y * info.width + x) * info.channels;
+      tiles.push({
+        x,
+        y,
+        r: data[offset],
+        g: data[offset + 1],
+        b: data[offset + 2],
+        a: Math.round(((data[offset + 3] ?? 255) / 255) * 1000) / 1000
+      });
     }
+  }
+
+  return {
+    columns: info.width,
+    rows: info.height,
+    tiles
   };
 }
 

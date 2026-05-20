@@ -1,5 +1,6 @@
 {
   "name": "liquid-glass",
+  "renderer": "glass",
   "description": "Balanced Apple-style glass with soft optical depth, pale highlights, and restrained color.",
   "material": {
     "blurRadius": 32,
