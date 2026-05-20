@@ -81,54 +81,121 @@
           <!-- Right Panel: Design & Output Controls -->
           <aside class="control-panel" aria-label="Renderer console controls">
             
-            <!-- Asset File Drop Zone -->
-            <label class="drop-zone" for="assetInput" id="dropZoneLabel">
-              <input id="assetInput" type="file" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" />
-              <div class="drop-content">
-                <span class="drop-icon">📤</span>
-                <span class="drop-text">Drop SVG, PNG, or JPG</span>
-                <span class="drop-subtext">Optimized for high-res vector glyphs</span>
+            <!-- STEP 1: UPLOAD GLYPH -->
+            <div class="step-container" id="step1">
+              <div class="step-header">
+                <span class="step-num">1</span>
+                <h3>Source Material</h3>
               </div>
-            </label>
+              <p class="step-description">Upload your brand logo or icon glyph as a high-resolution vector or image file.</p>
+              
+              <!-- Asset File Drop Zone -->
+              <label class="drop-zone" for="assetInput" id="dropZoneLabel">
+                <input id="assetInput" type="file" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" />
+                <div class="drop-content">
+                  <span class="drop-icon">📤</span>
+                  <span class="drop-text">Drop SVG, PNG, or JPG</span>
+                  <span class="drop-subtext">Optimized for high-res vector glyphs</span>
+                </div>
+              </label>
+            </div>
 
-            <!-- Mode Selector Preset Tabs -->
-            <div class="control-group">
-              <span class="control-label">Asset Pack Type</span>
-              <div class="preset-selector">
-                <button type="button" class="preset-btn active" id="singleAssetPreset">Single Assets</button>
-                <button type="button" class="preset-btn" id="webPackPreset">Full Web Pack</button>
+            <!-- STEP 2: CORE STYLE SELECT (Deterministic without AI) -->
+            <div class="step-container" id="step2">
+              <div class="step-header">
+                <span class="step-num">2</span>
+                <h3>Core Theme Base</h3>
+              </div>
+              <p class="step-description">Select your core rendering engine layout. Renders instantly for standard zero-AI styling.</p>
+
+              <!-- Standard Design Controls -->
+              <div id="standardControlsGroup" class="standard-controls-group">
+                <label>
+                  Theme Base Layout
+                  <select id="themeSelect">
+                    <option value="liquid-glass">Liquid glass (Light Apple-Glass)</option>
+                    <option value="crystal-liquid">Crystal liquid (Iridescent Emerald)</option>
+                    <option value="discomorphism">Discomorphism (Iridescent Tile)</option>
+                    <option value="chrome-metallic">Chrome metallic (Silver-Purple Metal)</option>
+                    <option value="dark-glass">Dark glass (Slate Frosted)</option>
+                    <option value="frosted-light">Frosted light (Pristine Frost)</option>
+                    <option value="holographic-subtle">Holographic subtle (Pastel Vapor)</option>
+                  </select>
+                </label>
+
+                <label class="scale-control">
+                  <span>Glyph scale <output id="assetScaleValue">56%</output></span>
+                  <input id="assetScale" type="range" min="40" max="99" value="56" />
+                </label>
               </div>
             </div>
 
-            <!-- Standard Design Controls (Collapsed partially in AI mode) -->
-            <div id="standardControlsGroup" class="standard-controls-group">
-              <label>
-                Theme Base
-                <select id="themeSelect">
-                  <option value="liquid-glass">Liquid glass (Light Apple-Glass)</option>
-                  <option value="crystal-liquid">Crystal liquid (Iridescent Emerald)</option>
-                  <option value="discomorphism">Discomorphism (Iridescent Tile)</option>
-                  <option value="chrome-metallic">Chrome metallic (Silver-Purple Metal)</option>
-                  <option value="dark-glass">Dark glass (Slate Frosted)</option>
-                  <option value="frosted-light">Frosted light (Pristine Frost)</option>
-                  <option value="holographic-subtle">Holographic subtle (Pastel Vapor)</option>
-                </select>
-              </label>
+            <!-- STEP 3: OPTIONAL GEMINI AI STYLING -->
+            <div class="step-container" id="step3">
+              <div class="step-header">
+                <span class="step-num">3</span>
+                <h3>Optional AI Refinement</h3>
+              </div>
+              <p class="step-description"><strong>Skip this step to generate standard assets</strong> (using the Core Theme selected in Step 2). Toggle it ON to perfect colors, specular lighting, and reflection details with Gemini AI.</p>
 
-              <label class="scale-control">
-                <span>Asset scale <output id="assetScaleValue">56%</output></span>
-                <input id="assetScale" type="range" min="40" max="99" value="56" />
-              </label>
+              <!-- AI Engine Customizer Panel -->
+              <div class="ai-console">
+                <div class="ai-console-header">
+                  <div class="ai-label">
+                    <span class="ai-sparkle">✨</span>
+                    <span>Enable Gemini AI</span>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="aiEnabledToggle" />
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                
+                <div id="aiConsoleContent" class="ai-console-content collapsed">
+                  <p class="ai-description">Input guidelines to fine-tune or shift the colors, reflections, gradients, and shadows of the Core Theme Base chosen in Step 2. <strong>First click "Apply AI Enhancements" below to update the preview</strong>. ALL output assets generated in Step 4 (including every size in a Web Pack) will automatically receive this premium AI styling!</p>
+                  <textarea id="aiPrompt" placeholder="Describe style adjustments (e.g. 'Add gold leaf specular highlights, shift glass edge refraction to glowing cyan, and make shadows a deeper navy')"></textarea>
+                  
+                  <div class="preset-chips" aria-label="Style prompt presets">
+                    <button type="button" class="chip" data-prompt="Adjust lighting to cyberpunk neon style: glowing purple base, hot pink light leaks, and radioactive green glass border highlights">Cyberpunk</button>
+                    <button type="button" class="chip" data-prompt="Refine into gold-plated style: highly reflective metallic speculars, gold leaf caustics, and deep dark obsidian framing shadow">Liquid Gold</button>
+                    <button type="button" class="chip" data-prompt="Transform into clean matte ceramic plates: soft pastel peach and mint, with uniform low-contrast soft shadows">Matte Ceramic</button>
+                    <button type="button" class="chip" data-prompt="Tweak into frosted emerald ice: cold mist caustics, white sparkling highlights, and extreme glass blur">Frosted Ice</button>
+                    <button type="button" class="chip" data-prompt="Tweak to holographic synthwave sunset: pastel pink and violet glass gradients, and warm glowing backlights">Vaporwave</button>
+                  </div>
+                  
+                  <button type="button" id="applyAiStylesBtn" class="button primary-glow">Apply AI Enhancements</button>
+                  <div id="aiProgressMessage" class="ai-progress-message hidden">
+                    <span class="spinner"></span> <span>Consulting Gemini...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 4: OUTPUT CONFIGURATION & GENERATION -->
+            <div class="step-container" id="step4">
+              <div class="step-header">
+                <span class="step-num">4</span>
+                <h3>Deliverables & Production</h3>
+              </div>
+              <p class="step-description">Configure your outputs. Choose either targeted single formats or compile a production-ready Web Asset Pack.</p>
+
+              <!-- Mode Selector Preset Tabs -->
+              <div class="control-group">
+                <div class="preset-selector">
+                  <button type="button" class="preset-btn active" id="singleAssetPreset">Single Assets</button>
+                  <button type="button" class="preset-btn" id="webPackPreset">Full Web Pack</button>
+                </div>
+              </div>
 
               <!-- Conditional Single Formats Settings -->
               <div id="singleSizesSelector" class="single-sizes-selector">
                 <fieldset>
-                  <legend>Sizes</legend>
-                  <label><input type="checkbox" name="size" value="64" checked /> 64</label>
-                  <label><input type="checkbox" name="size" value="128" checked /> 128</label>
-                  <label><input type="checkbox" name="size" value="256" checked /> 256</label>
-                  <label><input type="checkbox" name="size" value="512" checked /> 512</label>
-                  <label><input type="checkbox" name="size" value="1024" checked /> 1024</label>
+                  <legend>Target Sizes</legend>
+                  <label><input type="checkbox" name="size" value="64" checked /> 64px</label>
+                  <label><input type="checkbox" name="size" value="128" checked /> 128px</label>
+                  <label><input type="checkbox" name="size" value="256" checked /> 256px</label>
+                  <label><input type="checkbox" name="size" value="512" checked /> 512px</label>
+                  <label><input type="checkbox" name="size" value="1024" checked /> 1024px</label>
                 </fieldset>
 
                 <fieldset>
@@ -137,86 +204,68 @@
                   <label><input type="checkbox" name="format" value="svg" checked /> SVG</label>
                 </fieldset>
               </div>
-            </div>
 
-            <!-- Dynamic Web Asset Pack Folder Explorer Tree -->
-            <div id="webPackExplorer" class="web-pack-explorer hidden">
-              <div class="explorer-header">
-                <span>Planned Production Directory</span>
-                <span class="explorer-version">v1.0</span>
-              </div>
-              <div class="explorer-tree">
-                <div class="tree-item"><span class="tree-icon">📁</span> favicons/</div>
-                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon.ico <span class="badge">Legacy</span></div>
-                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon-16x16.png <span class="badge">Standard</span></div>
-                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon-32x32.png <span class="badge">Standard</span></div>
-                <div class="tree-item"><span class="tree-icon">📁</span> mobile/</div>
-                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> apple-touch-icon.png <span class="badge-apple">180px iOS</span></div>
-                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> android-chrome-192x192.png <span class="badge-android">192px</span></div>
-                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> android-chrome-512x512.png <span class="badge-android">512px</span></div>
-                <div class="tree-item"><span class="tree-icon">📁</span> desktop/</div>
-                <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> mstile-150x150.png <span class="badge-win">Windows</span></div>
-                <div class="tree-item"><span class="tree-icon">📁</span> marketing/</div>
-                <div class="tree-item indent"><span class="tree-icon text-gold">📄</span> og-image.png <span class="badge-og">1200x630 Showcase</span></div>
-                <div class="tree-item"><span class="tree-icon text-purple">📄</span> site.webmanifest <span class="badge-manifest">JSON</span></div>
-              </div>
-            </div>
-
-            <!-- AI Engine Customizer Panel -->
-            <div class="ai-console">
-              <div class="ai-console-header">
-                <div class="ai-label">
-                  <span class="ai-sparkle">✨</span>
-                  <span>Gemini AI Enhancer</span>
+              <!-- Dynamic Web Asset Pack Folder Explorer Tree -->
+              <div id="webPackExplorer" class="web-pack-explorer hidden">
+                <div class="explorer-header">
+                  <span>Planned Production Directory</span>
+                  <span class="explorer-version">v1.0</span>
                 </div>
-                <label class="switch">
-                  <input type="checkbox" id="aiEnabledToggle" />
-                  <span class="slider round"></span>
-                </label>
-              </div>
-              
-              <div id="aiConsoleContent" class="ai-console-content collapsed">
-                <p class="ai-description">Enhance, re-color, and customize lighting gradients using Google Gemini. Enter a styling prompt or select a preset.</p>
-                <textarea id="aiPrompt" placeholder="What custom visual style or adjustments do you want to inject? (e.g. 'frozen cyberpunk ice with magenta glow and deep shadows')"></textarea>
-                
-                <div class="preset-chips" aria-label="Style prompt presets">
-                  <button type="button" class="chip" data-prompt="cyberpunk neon with glowing purple base, hot pink light leaks, and radioactive green glass edge">Cyberpunk</button>
-                  <button type="button" class="chip" data-prompt="liquid gold plating with high metallic specular reflections, gold leaf caustics, and deep dark obsidian framing">Liquid Gold</button>
-                  <button type="button" class="chip" data-prompt="matte ceramic porcelain plates in soft pastel peach and mint, with clean uniform low-contrast shadows">Matte Ceramic</button>
-                  <button type="button" class="chip" data-prompt="frosted emerald ice with cold mist caustics, white sparkling highlights, and high glass blur">Frosted Ice</button>
-                  <button type="button" class="chip" data-prompt="holographic synthwave sunset with pastel pink and violet glass gradients, and warm glowing backlights">Vaporwave</button>
-                </div>
-                
-                <button type="button" id="applyAiStylesBtn" class="button primary-glow">Apply AI Enhancements</button>
-                <div id="aiProgressMessage" class="ai-progress-message hidden">
-                  <span class="spinner"></span> <span>Consulting Gemini...</span>
+                <div class="explorer-tree">
+                  <div class="tree-item"><span class="tree-icon">📁</span> favicons/</div>
+                  <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon.ico <span class="badge">Legacy</span></div>
+                  <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon-16x16.png <span class="badge">Standard</span></div>
+                  <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> favicon-32x32.png <span class="badge">Standard</span></div>
+                  <div class="tree-item"><span class="tree-icon">📁</span> mobile/</div>
+                  <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> apple-touch-icon.png <span class="badge-apple">180px iOS</span></div>
+                  <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> android-chrome-192x192.png <span class="badge-android">192px</span></div>
+                  <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> android-chrome-512x512.png <span class="badge-android">512px</span></div>
+                  <div class="tree-item"><span class="tree-icon">📁</span> desktop/</div>
+                  <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> mstile-150x150.png <span class="badge-win">Windows</span></div>
+                  <div class="tree-item"><span class="tree-icon">📁</span> marketing/</div>
+                  <div class="tree-item indent"><span class="tree-icon text-gold">📄</span> og-image.png <span class="badge-og">1200x630 Showcase</span></div>
+                  <div class="tree-item"><span class="tree-icon text-purple">📄</span> site.webmanifest <span class="badge-manifest">JSON</span></div>
                 </div>
               </div>
-            </div>
 
-            <!-- Generate Action Buttons -->
-            <button class="button primary" id="generateButton" type="button">Generate assets</button>
-            <button class="button secondary" id="downloadAllButton" type="button" disabled>Download ZIP</button>
-
-            <!-- copyable head tag block (reveals on web pack gen) -->
-            <div id="integrationCodeBlock" class="integration-code-block hidden">
-              <div class="code-header">
-                <span>HTML Integration Code</span>
-                <button type="button" id="copyHeadTagsBtn" class="copy-btn">Copy</button>
+              <!-- Real-Time Generation Progress Console -->
+              <div id="generationProgressContainer" class="generation-progress-container hidden">
+                <div class="progress-header">
+                  <span class="progress-title">⚡ Rendering Pipeline Progress</span>
+                  <span id="progressPercentage" class="progress-percentage">0%</span>
+                </div>
+                <div class="progress-bar-wrapper">
+                  <div id="progressBar" class="progress-bar"></div>
+                </div>
+                <ul id="progressStepsList" class="progress-steps-list"></ul>
               </div>
-              <pre><code id="headTagsCode">&lt;!-- Code will render here --&gt;</code></pre>
-            </div>
 
-            <!-- CLI equivalent feedback -->
-            <div class="command">
-              <span>CLI equivalent</span>
-              <code id="commandText">node render.js --theme liquid-glass --sizes 64,128,256,512,1024</code>
-            </div>
+              <!-- Generate Action Buttons -->
+              <div class="action-buttons-group">
+                <button class="button primary" id="generateButton" type="button">Generate assets</button>
+                <button class="button secondary" id="downloadAllButton" type="button" disabled>Download ZIP</button>
+              </div>
 
-            <!-- Generated Assets List -->
-            <div class="asset-list-container">
-              <span class="control-label">Generated Assets</span>
-              <div class="asset-list" id="assetList" aria-live="polite"></div>
+              <!-- copyable head tag block (reveals on web pack gen) -->
+              <div id="integrationCodeBlock" class="integration-code-block hidden">
+                <div class="code-header">
+                  <span>HTML Integration Code</span>
+                  <button type="button" id="copyHeadTagsBtn" class="copy-btn">Copy</button>
+                </div>
+                <pre><code id="headTagsCode">&lt;!-- Code will render here --&gt;</code></pre>
+              </div>
+
+              <!-- CLI equivalent feedback -->
+              <div class="command">
+                <span>CLI equivalent</span>
+                <code id="commandText">node render.js --theme liquid-glass --sizes 64,128,256,512,1024</code>
+              </div>
+
+              <!-- Generated Assets List -->
+              <div class="asset-list-container">
+                <span class="control-label">Generated Assets</span>
+                <div class="asset-list" id="assetList" aria-live="polite"></div>
+              </div>
             </div>
 
           </aside>
