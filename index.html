@@ -127,6 +127,15 @@
                   <span>Glyph scale <output id="assetScaleValue">56%</output></span>
                   <input id="assetScale" type="range" min="40" max="99" value="56" />
                 </label>
+
+                <!-- Background Frame Toggle Switch -->
+                <div class="toggle-row">
+                  <span class="toggle-label">Render Background Frame</span>
+                  <label class="switch">
+                    <input type="checkbox" id="frameEnabledToggle" checked />
+                    <span class="slider round"></span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -152,15 +161,15 @@
                 </div>
                 
                 <div id="aiConsoleContent" class="ai-console-content collapsed">
-                  <p class="ai-description">Input guidelines to fine-tune or shift the colors, reflections, gradients, and shadows of the Core Theme Base chosen in Step 2. <strong>First click "Apply AI Enhancements" below to update the preview</strong>. ALL output assets generated in Step 4 (including every size in a Web Pack) will automatically receive this premium AI styling!</p>
-                  <textarea id="aiPrompt" placeholder="Describe style adjustments (e.g. 'Add gold leaf specular highlights, shift glass edge refraction to glowing cyan, and make shadows a deeper navy')"></textarea>
+                  <p class="ai-description">Enhance or transform the Core Theme Base chosen in Step 2. Type an aesthetic fine-tuning directive (or use a preset chip below) to guide the AI, then click <strong>"Apply AI Enhancements"</strong> to compile. <em>Note: AI styling is always synthesized from the Core Theme Base in Step 2. Re-applying generates a fresh design.</em></p>
+                  <textarea id="aiPrompt" placeholder="Describe aesthetic adjustments (e.g. 'Infuse velvet dark tones with copper highlights' or 'Shift gradient to a soft sage green and white ceramic matte')"></textarea>
                   
                   <div class="preset-chips" aria-label="Style prompt presets">
-                    <button type="button" class="chip" data-prompt="Adjust lighting to cyberpunk neon style: glowing purple base, hot pink light leaks, and radioactive green glass border highlights">Cyberpunk</button>
-                    <button type="button" class="chip" data-prompt="Refine into gold-plated style: highly reflective metallic speculars, gold leaf caustics, and deep dark obsidian framing shadow">Liquid Gold</button>
-                    <button type="button" class="chip" data-prompt="Transform into clean matte ceramic plates: soft pastel peach and mint, with uniform low-contrast soft shadows">Matte Ceramic</button>
-                    <button type="button" class="chip" data-prompt="Tweak into frosted emerald ice: cold mist caustics, white sparkling highlights, and extreme glass blur">Frosted Ice</button>
-                    <button type="button" class="chip" data-prompt="Tweak to holographic synthwave sunset: pastel pink and violet glass gradients, and warm glowing backlights">Vaporwave</button>
+                    <button type="button" class="chip" data-prompt="Infuse dark obsidian and vibrant cyan/magenta neon refractions.">Cyberpunk Neon Shift</button>
+                    <button type="button" class="chip" data-prompt="Refine reflections with polished 24k gold leaf speculars and deep warm gold lighting.">Liquid Gold Bevels</button>
+                    <button type="button" class="chip" data-prompt="Shift to elegant matte ceramic textures with soft cream, sage green, and lavender gradients.">Matte Pastel Polish</button>
+                    <button type="button" class="chip" data-prompt="Increase glass frostiness to a thick, cold, white ice texture with pristine frosted rim lighting.">Frosted Ice Texture</button>
+                    <button type="button" class="chip" data-prompt="Blend high-saturation tropical sunset tones, warm peach flares, and translucent pink glass.">Vaporwave Sunset Glow</button>
                   </div>
                   
                   <button type="button" id="applyAiStylesBtn" class="button primary-glow">Apply AI Enhancements</button>
@@ -222,6 +231,9 @@
                   <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> android-chrome-512x512.png <span class="badge-android">512px</span></div>
                   <div class="tree-item"><span class="tree-icon">📁</span> desktop/</div>
                   <div class="tree-item indent"><span class="tree-icon text-dim">📄</span> mstile-150x150.png <span class="badge-win">Windows</span></div>
+                  <div class="tree-item indent"><span class="tree-icon text-gold">📄</span> app-icon-1024x1024.png <span class="badge">1024px Master</span></div>
+                  <div class="tree-item"><span class="tree-icon">📁</span> vector/</div>
+                  <div class="tree-item indent"><span class="tree-icon text-purple">📄</span> vector-icon.svg <span class="badge-manifest">Scalable Vector</span></div>
                   <div class="tree-item"><span class="tree-icon">📁</span> marketing/</div>
                   <div class="tree-item indent"><span class="tree-icon text-gold">📄</span> og-image.png <span class="badge-og">1200x630 Showcase</span></div>
                   <div class="tree-item"><span class="tree-icon text-purple">📄</span> site.webmanifest <span class="badge-manifest">JSON</span></div>

@@ -83,6 +83,7 @@ const downloadAllButton = document.querySelector("#downloadAllButton");
 const assetList = document.querySelector("#assetList");
 const assetScale = document.querySelector("#assetScale");
 const assetScaleValue = document.querySelector("#assetScaleValue");
+const frameEnabledToggle = document.querySelector("#frameEnabledToggle");
 
 // New UI Selectors
 const openSettingsBtn = document.querySelector("#openSettingsBtn");
@@ -147,6 +148,20 @@ function showToast(message, type = "success") {
 }
 
 // --- EVENT LISTENERS ---
+
+// Background Frame Toggle
+if (frameEnabledToggle) {
+  frameEnabledToggle.addEventListener("change", () => {
+    const useFrame = frameEnabledToggle.checked;
+    if (useFrame) {
+      iconPreview.classList.remove("no-frame");
+    } else {
+      iconPreview.classList.add("no-frame");
+    }
+    updateCommand();
+    invalidateGeneratedAssets("Background Frame state changed");
+  });
+}
 
 // Settings Modal
 openSettingsBtn.addEventListener("click", () => {
@@ -267,7 +282,25 @@ applyAiStylesBtn.addEventListener("click", async () => {
   
   applyAiStylesBtn.disabled = true;
   aiProgressMessage.classList.remove("hidden");
-  setStatus("Consulting Gemini AI...");
+  
+  const progressText = aiProgressMessage.querySelector("span:not(.spinner)");
+  const stages = [
+    "Analyzing base styles...",
+    "Consulting Gemini AI...",
+    "Synthesizing specular highlight gradients...",
+    "Refining metallic specular reflections...",
+    "Calculating color chromatic harmony...",
+    "Finalizing luxury theme compilation..."
+  ];
+  let stageIdx = 0;
+  if (progressText) progressText.textContent = stages[0];
+  setStatus(stages[0]);
+
+  const stageInterval = setInterval(() => {
+    stageIdx = (stageIdx + 1) % stages.length;
+    if (progressText) progressText.textContent = stages[stageIdx];
+    setStatus(stages[stageIdx]);
+  }, 2200);
   
   try {
     const generatedTheme = await fetchAiTheme(prompt, themeSelect.value, savedKey);
@@ -284,6 +317,8 @@ applyAiStylesBtn.addEventListener("click", async () => {
     showToast(`Gemini error: ${err.message}`, "error");
     setStatus("AI Style compilation failed");
   } finally {
+    clearInterval(stageInterval);
+    if (progressText) progressText.textContent = "Consulting Gemini...";
     applyAiStylesBtn.disabled = false;
     aiProgressMessage.classList.add("hidden");
   }
@@ -386,6 +421,13 @@ loadDefaultIcon();
 updateCommand();
 renderEmptyAssets();
 updateAiToggleState();
+if (frameEnabledToggle) {
+  if (frameEnabledToggle.checked) {
+    iconPreview.classList.remove("no-frame");
+  } else {
+    iconPreview.classList.add("no-frame");
+  }
+}
 
 // --- API UTILITIES ---
 
@@ -448,6 +490,9 @@ You are a master digital designer specializing in glassmorphic, neomorphic, and 
 Given a user style request and a "Core Theme Base" context, you will return a strictly valid JSON object that contains the properties required to render this premium aesthetic.
 
 Your task is to refine, enhance, or transform the provided Core Theme Base according to the user's styling request. The output JSON format must match one of our four renderers: 'glass' (standard glassmorphism), 'crystal-liquid', 'discomorphism', or 'chrome-metallic'.
+
+Here is our complete professional visual design themes library for inspiration and reference design tokens:
+${JSON.stringify(THEMES, null, 2)}
 
 The active Core Theme Base is of type '${baseTheme.renderer}' with name '${baseThemeKey}'. Its current values are:
 ${JSON.stringify(baseTheme, null, 2)}
@@ -798,6 +843,25 @@ async function generateAssets() {
         }
       });
 
+      // 4b. Master High-Res PNG
+      steps.push({
+        label: "Render Master High-Res Desktop Icon (app-icon-1024x1024.png)",
+        run: async () => {
+          const highResPng = await renderPng({ size: 1024, image, theme, assetScale: scale });
+          generatedAssets.push(createGeneratedAsset("desktop/app-icon-1024x1024.png", highResPng));
+        }
+      });
+
+      // 4c. Scalable Vector SVG
+      steps.push({
+        label: "Render Scalable Vector Icon (vector-icon.svg)",
+        run: async () => {
+          const vectorSvg = renderSvg({ size: 512, asset: currentAsset, theme, assetScale: scale });
+          const blob = new Blob([vectorSvg], { type: "image/svg+xml" });
+          generatedAssets.push(createGeneratedAsset("vector/vector-icon.svg", blob));
+        }
+      });
+
       // 5. Marketing Banner
       steps.push({
         label: "Render Showcase Marketing Banner (og-image.png)",
@@ -921,17 +985,21 @@ function renderHeadIntegrationSnippet(theme) {
   integrationCodeBlock.classList.remove("hidden");
 }
 
-function renderPng({ size, image, theme, assetScale }) {
+function renderPng({ size, image, theme, assetScale, useFrame }) {
+  if (useFrame === undefined) {
+    const frameToggle = document.querySelector("#frameEnabledToggle");
+    useFrame = frameToggle ? frameToggle.checked : true;
+  }
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (theme.renderer === "discomorphism") {
-    drawDiscoIcon(ctx, { size, image, theme, assetScale });
+    drawDiscoIcon(ctx, { size, image, theme, assetScale, useFrame });
   } else if (theme.renderer === "chrome-metallic") {
-    drawChromeIcon(ctx, { size, image, theme, assetScale });
+    drawChromeIcon(ctx, { size, image, theme, assetScale, useFrame });
   } else {
-    drawGlassIcon(ctx, { size, image, theme, assetScale });
+    drawGlassIcon(ctx, { size, image, theme, assetScale, useFrame });
   }
 
   return new Promise((resolve) => {
@@ -1005,11 +1073,11 @@ async function renderOgImage({ image, theme, assetScale }) {
   
   ctx.translate(x, y);
   if (theme.renderer === "discomorphism") {
-    drawDiscoIcon(ctx, { size, image, theme, assetScale });
+    drawDiscoIcon(ctx, { size, image, theme, assetScale, useFrame: true });
   } else if (theme.renderer === "chrome-metallic") {
-    drawChromeIcon(ctx, { size, image, theme, assetScale });
+    drawChromeIcon(ctx, { size, image, theme, assetScale, useFrame: true });
   } else {
-    drawGlassIcon(ctx, { size, image, theme, assetScale });
+    drawGlassIcon(ctx, { size, image, theme, assetScale, useFrame: true });
   }
   ctx.restore();
   ctx.restore();
@@ -1033,8 +1101,29 @@ async function renderOgImage({ image, theme, assetScale }) {
 
 // --- DETERMINISTIC CANVAS DRAWERS ---
 
-function drawGlassIcon(ctx, { size, image, theme, assetScale }) {
+function drawGlassIcon(ctx, { size, image, theme, assetScale, useFrame }) {
+  if (useFrame === undefined) {
+    const frameToggle = document.querySelector("#frameEnabledToggle");
+    useFrame = frameToggle ? frameToggle.checked : true;
+  }
   const radius = size * 0.218;
+
+  if (!useFrame) {
+    const finalScale = Math.min(0.92, assetScale * 1.35);
+    const glyphSize = size * finalScale;
+    const fit = contain(image.width, image.height, glyphSize, glyphSize);
+    const x = (size - fit.width) / 2;
+    const y = (size - fit.height) / 2;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
+    ctx.shadowBlur = size * 0.055;
+    ctx.shadowOffsetY = size * 0.026;
+    ctx.drawImage(image, x, y, fit.width, fit.height);
+    ctx.restore();
+    return;
+  }
+
   roundRect(ctx, 0, 0, size, size, radius);
   ctx.clip();
 
@@ -1085,24 +1174,34 @@ function drawGlassIcon(ctx, { size, image, theme, assetScale }) {
   ctx.fill();
 }
 
-function drawDiscoIcon(ctx, { size, image, theme, assetScale }) {
+function drawDiscoIcon(ctx, { size, image, theme, assetScale, useFrame }) {
+  if (useFrame === undefined) {
+    const frameToggle = document.querySelector("#frameEnabledToggle");
+    useFrame = frameToggle ? frameToggle.checked : true;
+  }
   const radius = size * 0.218;
-  roundRect(ctx, 0, 0, size, size, radius);
-  ctx.clip();
 
-  const bg = ctx.createLinearGradient(0, 0, size, size);
-  const colors = asArray(theme.background || theme.bg, ["#11151b", "#07090f"]);
-  addGradientStops(bg, colors);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, size, size);
+  if (useFrame) {
+    roundRect(ctx, 0, 0, size, size, radius);
+    ctx.clip();
+
+    const bg = ctx.createLinearGradient(0, 0, size, size);
+    const colors = asArray(theme.background || theme.bg, ["#11151b", "#07090f"]);
+    addGradientStops(bg, colors);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, size, size);
+  }
 
   const lights = asArray(theme.lights, ["#35e5ff", "#d65cff", "#f8e8a4"]);
 
-  drawGlow(ctx, size * 0.18, size * 0.74, size * 0.42, lights[0], 0.42);
-  drawGlow(ctx, size * 0.84, size * 0.2, size * 0.34, lights[1], 0.38);
-  drawGlow(ctx, size * 0.52, size * 0.08, size * 0.3, lights[2], 0.28);
+  if (useFrame) {
+    drawGlow(ctx, size * 0.18, size * 0.74, size * 0.42, lights[0], 0.42);
+    drawGlow(ctx, size * 0.84, size * 0.2, size * 0.34, lights[1], 0.38);
+    drawGlow(ctx, size * 0.52, size * 0.08, size * 0.3, lights[2], 0.28);
+  }
 
-  const glyphSize = size * assetScale;
+  const finalScale = useFrame ? assetScale : Math.min(0.92, assetScale * 1.35);
+  const glyphSize = size * finalScale;
   const glyphX = (size - glyphSize) / 2;
   const glyphY = (size - glyphSize) / 2;
   const sampleCount = 34;
@@ -1115,14 +1214,16 @@ function drawDiscoIcon(ctx, { size, image, theme, assetScale }) {
   const cell = glyphSize / sampleCount;
   const gap = Math.max(0.75, size * 0.001);
 
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.52)";
-  ctx.shadowBlur = size * 0.055;
-  ctx.shadowOffsetY = size * 0.026;
-  roundRect(ctx, glyphX, glyphY, glyphSize, glyphSize, radius * 0.25);
-  ctx.fillStyle = "rgba(0,0,0,.35)";
-  ctx.fill();
-  ctx.restore();
+  if (useFrame) {
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.52)";
+    ctx.shadowBlur = size * 0.055;
+    ctx.shadowOffsetY = size * 0.026;
+    roundRect(ctx, glyphX, glyphY, glyphSize, glyphSize, radius * 0.25);
+    ctx.fillStyle = "rgba(0,0,0,.35)";
+    ctx.fill();
+    ctx.restore();
+  }
 
   for (let y = 0; y < sampleCount; y += 1) {
     for (let x = 0; x < sampleCount; x += 1) {
@@ -1157,41 +1258,55 @@ function drawDiscoIcon(ctx, { size, image, theme, assetScale }) {
   drawContainedImage(ctx, image, glyphX, glyphY, glyphSize, glyphSize);
   ctx.restore();
 
-  drawStar(ctx, size * 0.82, size * 0.14, size * 0.052, lights[1], 0.82);
-  drawStar(ctx, size * 0.18, size * 0.45, size * 0.032, lights[0], 0.48);
-  drawStar(ctx, size * 0.62, size * 0.77, size * 0.028, lights[2], 0.38);
+  if (useFrame) {
+    drawStar(ctx, size * 0.82, size * 0.14, size * 0.052, lights[1], 0.82);
+    drawStar(ctx, size * 0.18, size * 0.45, size * 0.032, lights[0], 0.48);
+    drawStar(ctx, size * 0.62, size * 0.77, size * 0.028, lights[2], 0.38);
 
-  ctx.lineWidth = Math.max(2, size * 0.007);
-  const rim = ctx.createLinearGradient(0, 0, size, size);
-  const edgeColors = asArray(theme.edge, ["#3b67c8", "#7dd8c5", "#b9a7ff"]);
-  rim.addColorStop(0, edgeColors[0] || "#3b67c8");
-  rim.addColorStop(0.52, edgeColors[1] || "#7dd8c5");
-  rim.addColorStop(1, edgeColors[2] || "#b9a7ff");
-  ctx.strokeStyle = rim;
-  roundRect(ctx, size * 0.003, size * 0.003, size * 0.994, size * 0.994, radius);
-  ctx.stroke();
+    ctx.lineWidth = Math.max(2, size * 0.007);
+    const rim = ctx.createLinearGradient(0, 0, size, size);
+    const edgeColors = asArray(theme.edge, ["#3b67c8", "#7dd8c5", "#b9a7ff"]);
+    rim.addColorStop(0, edgeColors[0] || "#3b67c8");
+    rim.addColorStop(0.52, edgeColors[1] || "#7dd8c5");
+    rim.addColorStop(1, edgeColors[2] || "#b9a7ff");
+    ctx.strokeStyle = rim;
+    roundRect(ctx, size * 0.003, size * 0.003, size * 0.994, size * 0.994, radius);
+    ctx.stroke();
+  }
 }
 
-function drawChromeIcon(ctx, { size, image, theme, assetScale }) {
+function drawChromeIcon(ctx, { size, image, theme, assetScale, useFrame }) {
+  if (useFrame === undefined) {
+    const frameToggle = document.querySelector("#frameEnabledToggle");
+    useFrame = frameToggle ? frameToggle.checked : true;
+  }
   const radius = size * 0.218;
-  roundRect(ctx, 0, 0, size, size, radius);
-  ctx.clip();
 
-  const bg = ctx.createLinearGradient(0, 0, size, size);
-  const colors = asArray(theme.background || theme.bg, ["#090a11", "#161727"]);
-  addGradientStops(bg, colors);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, size, size);
+  if (useFrame) {
+    roundRect(ctx, 0, 0, size, size, radius);
+    ctx.clip();
+
+    const bg = ctx.createLinearGradient(0, 0, size, size);
+    const colors = asArray(theme.background || theme.bg, ["#090a11", "#161727"]);
+    addGradientStops(bg, colors);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, size, size);
+  }
 
   const accentColors = asArray(theme.accent, ["#d856ff"]);
-  const glowAccent = theme.glowColor || accentColors[0];
-  drawGlow(ctx, size * 0.52, size * 0.75, size * 0.42, glowAccent, 0.42);
 
-  roundRect(ctx, size * 0.05, size * 0.05, size * 0.9, size * 0.9, radius * 0.78);
-  ctx.fillStyle = "rgba(255,255,255,.035)";
-  ctx.fill();
+  if (useFrame) {
+    const glowAccent = theme.glowColor || accentColors[0];
+    drawGlow(ctx, size * 0.52, size * 0.75, size * 0.42, glowAccent, 0.42);
 
-  const mask = createMaskCanvas(size, image, assetScale);
+    roundRect(ctx, size * 0.05, size * 0.05, size * 0.9, size * 0.9, radius * 0.78);
+    ctx.fillStyle = "rgba(255,255,255,.035)";
+    ctx.fill();
+  }
+
+  const finalScale = useFrame ? assetScale : Math.min(0.92, assetScale * 1.35);
+
+  const mask = createMaskCanvas(size, image, finalScale);
   const metalCanvas = document.createElement("canvas");
   metalCanvas.width = size;
   metalCanvas.height = size;
@@ -1228,23 +1343,44 @@ function drawChromeIcon(ctx, { size, image, theme, assetScale }) {
   ctx.save();
   ctx.globalCompositeOperation = "multiply";
   ctx.globalAlpha = 0.22;
-  drawSourceInGlyphBox(ctx, image, size, assetScale);
+  drawSourceInGlyphBox(ctx, image, size, finalScale);
   ctx.restore();
 
-  const accentColor = accentColors[1] || accentColors[0];
-  drawStar(ctx, size * 0.68, size * 0.2, size * 0.04, "#ffffff", 0.88);
-  drawStar(ctx, size * 0.67, size * 0.73, size * 0.035, accentColor, 0.82);
+  if (useFrame) {
+    const accentColor = accentColors[1] || accentColors[0];
+    drawStar(ctx, size * 0.68, size * 0.2, size * 0.04, "#ffffff", 0.88);
+    drawStar(ctx, size * 0.67, size * 0.73, size * 0.035, accentColor, 0.82);
+  }
 }
 
 // --- DETERMINISTIC SVG RENDERERS ---
 
-function renderSvg({ size, asset, theme, assetScale }) {
+function renderSvg({ size, asset, theme, assetScale, useFrame }) {
+  if (useFrame === undefined) {
+    const frameToggle = document.querySelector("#frameEnabledToggle");
+    useFrame = frameToggle ? frameToggle.checked : true;
+  }
+
   if (theme.renderer === "discomorphism") {
-    return renderDiscoSvg({ size, asset, theme, assetScale });
+    return renderDiscoSvg({ size, asset, theme, assetScale, useFrame });
   }
 
   if (theme.renderer === "chrome-metallic") {
-    return renderChromeSvg({ size, asset, theme, assetScale });
+    return renderChromeSvg({ size, asset, theme, assetScale, useFrame });
+  }
+
+  if (!useFrame) {
+    const finalScale = Math.min(0.92, assetScale * 1.35);
+    const glyph = Math.round(size * finalScale);
+    const glyphX = Math.round((size - glyph) / 2);
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <defs>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="${Math.round(size * 0.032)}" stdDeviation="${Math.round(size * 0.035)}" flood-color="#000000" flood-opacity=".32"/>
+    </filter>
+  </defs>
+  <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet" filter="url(#softShadow)"/>
+</svg>`;
   }
 
   const radius = Math.round(size * 0.218);
@@ -1278,14 +1414,43 @@ function renderSvg({ size, asset, theme, assetScale }) {
 </svg>`;
 }
 
-function renderDiscoSvg({ size, asset, theme, assetScale }) {
+function renderDiscoSvg({ size, asset, theme, assetScale, useFrame }) {
+  if (useFrame === undefined) {
+    const frameToggle = document.querySelector("#frameEnabledToggle");
+    useFrame = frameToggle ? frameToggle.checked : true;
+  }
   const radius = Math.round(size * 0.218);
-  const glyph = Math.round(size * assetScale);
+  const finalScale = useFrame ? assetScale : Math.min(0.92, assetScale * 1.35);
+  const glyph = Math.round(size * finalScale);
   const glyphX = Math.round((size - glyph) / 2);
   const colors = asArray(theme.background || theme.bg, ["#11151b", "#07090f"]);
   const bgStops = renderSvgStops(colors);
   const lights = asArray(theme.lights, ["#35e5ff", "#d65cff"]);
   const edgeColors = asArray(theme.edge, ["#3b67c8", "#7dd8c5"]);
+
+  if (!useFrame) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <defs>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="${Math.round(size * 0.032)}" stdDeviation="${Math.round(size * 0.035)}" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+    <pattern id="tiles" width="${Math.max(4, size / 28)}" height="${Math.max(4, size / 28)}" patternUnits="userSpaceOnUse">
+      <rect width="100%" height="100%" fill="#0a0d14"/>
+      <rect x="1" y="1" width="80%" height="80%" rx="1" fill="#c7fbff" opacity=".42"/>
+      <path d="M0 0h100v100" stroke="#fff" stroke-opacity=".22"/>
+    </pattern>
+    <mask id="glyphMask">
+      <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet"/>
+    </mask>
+  </defs>
+  <g filter="url(#softShadow)">
+    <g mask="url(#glyphMask)">
+      <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#tiles)" opacity=".85"/>
+      <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet" opacity=".22" style="mix-blend-mode:multiply"/>
+    </g>
+  </g>
+</svg>`;
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
@@ -1308,9 +1473,14 @@ function renderDiscoSvg({ size, asset, theme, assetScale }) {
 </svg>`;
 }
 
-function renderChromeSvg({ size, asset, theme, assetScale }) {
+function renderChromeSvg({ size, asset, theme, assetScale, useFrame }) {
+  if (useFrame === undefined) {
+    const frameToggle = document.querySelector("#frameEnabledToggle");
+    useFrame = frameToggle ? frameToggle.checked : true;
+  }
   const radius = Math.round(size * 0.218);
-  const glyph = Math.round(size * assetScale);
+  const finalScale = useFrame ? assetScale : Math.min(0.92, assetScale * 1.35);
+  const glyph = Math.round(size * finalScale);
   const glyphX = Math.round((size - glyph) / 2);
   
   const colors = asArray(theme.background || theme.bg, ["#090a11", "#161727"]);
@@ -1320,6 +1490,26 @@ function renderChromeSvg({ size, asset, theme, assetScale }) {
   const metalStops = renderSvgStops(metalColors);
   
   const accentColor = asArray(theme.accent, ["#d856ff"])[0];
+
+  if (!useFrame) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">${metalStops}</linearGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="${Math.round(size * 0.032)}" stdDeviation="${Math.round(size * 0.035)}" flood-color="#000000" flood-opacity=".54"/>
+    </filter>
+    <mask id="chromeMask">
+      <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet"/>
+    </mask>
+  </defs>
+  <g filter="url(#softShadow)">
+    <g mask="url(#chromeMask)">
+      <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metal)"/>
+      <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet" opacity=".22" style="mix-blend-mode:multiply"/>
+    </g>
+  </g>
+</svg>`;
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
@@ -1416,8 +1606,11 @@ function updateCommand() {
     ? customAiTheme 
     : THEMES[themeSelect.value];
   
+  const frameToggle = document.querySelector("#frameEnabledToggle");
+  const frameArg = (frameToggle && !frameToggle.checked) ? " --no-frame" : "";
+  
   if (activePreset === "pack") {
-    commandText.textContent = `node render.js --theme ${activeTheme.renderer || 'glass'} --all-sizes-and-favicons --pwa-manifest --og-banner --asset-scale ${getAssetScale().toFixed(2)}`;
+    commandText.textContent = `node render.js --theme ${activeTheme.renderer || 'glass'} --all-sizes-and-favicons --pwa-manifest --og-banner --asset-scale ${getAssetScale().toFixed(2)}${frameArg}`;
     return;
   }
   
@@ -1425,7 +1618,7 @@ function updateCommand() {
   const theme = themeSelect.value;
   const formats = getSelectedValues("format");
   const formatArg = formats.length ? ` --formats ${formats.join(",")}` : "";
-  commandText.textContent = `node render.js --theme ${theme} --sizes ${sizes.join(",")} --asset-scale ${getAssetScale().toFixed(2)}${formatArg}`;
+  commandText.textContent = `node render.js --theme ${theme} --sizes ${sizes.join(",")} --asset-scale ${getAssetScale().toFixed(2)}${formatArg}${frameArg}`;
 }
 
 function setStatus(message) {

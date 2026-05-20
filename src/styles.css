@@ -19,6 +19,10 @@
   --glyph-scale: 0.56;
 }
 
+.hidden {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -347,8 +351,27 @@ h1 {
   opacity: .72;
 }
 
+.icon-preview.no-frame {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+.icon-preview.no-frame .preview-field,
+.icon-preview.no-frame .preview-glass,
+.icon-preview.no-frame .preview-edge,
+.icon-preview.no-frame .preview-shine,
+.icon-preview.no-frame .preview-grain {
+  display: none !important;
+}
+
+.icon-preview.no-frame .preview-glyph {
+  --glyph-scale-factor: 1.35;
+}
+
 .preview-glyph {
-  inset: calc((1 - var(--glyph-scale)) * 50%);
+  inset: calc((1 - (var(--glyph-scale) * var(--glyph-scale-factor, 1))) * 50%);
   display: grid;
   place-items: center;
   filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.45));
@@ -842,6 +865,22 @@ textarea:focus {
 .button:disabled {
   cursor: not-allowed;
   opacity: .35;
+}
+
+/* --- TOGGLE ROW LAYOUT --- */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 10px 0 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.toggle-label {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-dim);
 }
 
 /* --- DYNAMIC TOGGLE SWITCH --- */
