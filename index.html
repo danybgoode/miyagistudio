@@ -7,6 +7,9 @@
       name="description"
       content="Miyagi Studio - A premium glassmorphic application icon engine enhanced by Google Gemini AI."
     />
+    <meta name="theme-color" content="#08090d" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>Miyagi Studio | AI-Enhanced Luxury Asset Engine</title>
     <!-- Google Fonts for elevated luxury styling -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,6 +36,9 @@
           <div class="header-actions">
             <button type="button" class="button secondary settings-btn" id="openSettingsBtn" aria-label="Open API settings">
               <span class="btn-icon">⚙️</span> Gemini Setup
+            </button>
+            <button type="button" class="button secondary install-btn hidden" id="installAppBtn">
+              <span class="btn-icon">⬇</span> Install App
             </button>
             <a class="button secondary github-btn" href="https://github.com/danybgoode/miyagistudio" target="_blank" rel="noopener">GitHub</a>
           </div>
@@ -80,6 +86,17 @@
 
           <!-- Right Panel: Design & Output Controls -->
           <aside class="control-panel" aria-label="Renderer console controls">
+
+            <div class="workflow-switch" role="tablist" aria-label="Production mode">
+              <button type="button" class="workflow-tab active" id="classicWorkflowBtn" data-workflow="classic">
+                <span>Classic Renderer</span>
+                <small>No AI, deterministic output</small>
+              </button>
+              <button type="button" class="workflow-tab" id="aiWorkflowBtn" data-workflow="ai">
+                <span>AI Transform Lab</span>
+                <small>Prompted source transformation</small>
+              </button>
+            </div>
             
             <!-- STEP 1: UPLOAD GLYPH -->
             <div class="step-container" id="step1">
@@ -91,13 +108,41 @@
               
               <!-- Asset File Drop Zone -->
               <label class="drop-zone" for="assetInput" id="dropZoneLabel">
-                <input id="assetInput" type="file" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" />
+                <input id="assetInput" type="file" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" multiple />
                 <div class="drop-content">
                   <span class="drop-icon">📤</span>
-                  <span class="drop-text">Drop SVG, PNG, or JPG</span>
-                  <span class="drop-subtext">Optimized for high-res vector glyphs</span>
+                  <span class="drop-text">Drop SVG, PNG, or JPG assets</span>
+                  <span class="drop-subtext">Single files or full icon batches</span>
                 </div>
               </label>
+
+              <div id="batchQueue" class="batch-queue" aria-live="polite"></div>
+
+              <div class="source-prep-panel">
+                <div class="mini-panel-header">
+                  <span>Source Prep</span>
+                  <small>Clean the input before styling</small>
+                </div>
+                <div class="prep-grid">
+                  <label class="check-row"><input type="checkbox" id="prepTrim" checked /> Auto-trim empty edges</label>
+                  <label class="check-row"><input type="checkbox" id="prepRemoveBg" /> Remove flat background</label>
+                  <label>
+                    Fit mode
+                    <select id="prepFitMode">
+                      <option value="contain">Contain full glyph</option>
+                      <option value="cover">Crop to fill square</option>
+                    </select>
+                  </label>
+                  <label class="scale-control prep-padding">
+                    <span>Safe padding <output id="prepPaddingValue">12%</output></span>
+                    <input id="prepPadding" type="range" min="0" max="28" value="12" />
+                  </label>
+                </div>
+                <div class="prep-actions">
+                  <button type="button" class="button secondary" id="applyPrepBtn">Apply Source Prep</button>
+                  <button type="button" class="button secondary" id="resetPrepBtn">Reset Source</button>
+                </div>
+              </div>
             </div>
 
             <!-- STEP 2: CORE STYLE SELECT (Deterministic without AI) -->
@@ -143,9 +188,9 @@
             <div class="step-container" id="step3">
               <div class="step-header">
                 <span class="step-num">3</span>
-                <h3>Optional AI Refinement</h3>
+                <h3>AI Transform Lab</h3>
               </div>
-              <p class="step-description"><strong>Skip this step to generate standard assets</strong> (using the Core Theme selected in Step 2). Toggle it ON to perfect colors, specular lighting, and reflection details with Gemini AI.</p>
+              <p class="step-description"><strong>Classic mode skips this step.</strong> AI mode transforms the source asset under a strict theme recipe, validates the result, then sends it into the renderer.</p>
 
               <!-- AI Engine Customizer Panel -->
               <div class="ai-console">
@@ -161,8 +206,26 @@
                 </div>
                 
                 <div id="aiConsoleContent" class="ai-console-content collapsed">
-                  <p class="ai-description">Enhance or transform the Core Theme Base chosen in Step 2. Type an aesthetic fine-tuning directive (or use a preset chip below) to guide the AI, then click <strong>"Apply AI Enhancements"</strong> to compile. <em>Note: AI styling is always synthesized from the Core Theme Base in Step 2. Re-applying generates a fresh design.</em></p>
-                  <textarea id="aiPrompt" placeholder="Describe aesthetic adjustments (e.g. 'Infuse velvet dark tones with copper highlights' or 'Shift gradient to a soft sage green and white ceramic matte')"></textarea>
+                  <p class="ai-description">Use the selected theme as a locked art-direction recipe. The AI can polish or restyle the input, but should preserve the mark's identity unless you loosen the controls below.</p>
+                  <div class="ai-control-grid">
+                    <label>
+                      Shape lock
+                      <select id="aiShapeLock">
+                        <option value="strict">Strict brand silhouette</option>
+                        <option value="balanced">Balanced polish</option>
+                        <option value="expressive">Expressive restyle</option>
+                      </select>
+                    </label>
+                    <label>
+                      Color mode
+                      <select id="aiColorMode">
+                        <option value="preserve">Preserve brand colors</option>
+                        <option value="adapt">Adapt to theme palette</option>
+                        <option value="recolor">Full premium recolor</option>
+                      </select>
+                    </label>
+                  </div>
+                  <textarea id="aiPrompt" placeholder="Describe transformation intent, e.g. 'make the mark feel like polished chrome with cyan-magenta rim reflections while preserving the leaf silhouette'"></textarea>
                   
                   <div class="preset-chips" aria-label="Style prompt presets">
                     <button type="button" class="chip" data-prompt="Infuse dark obsidian and vibrant cyan/magenta neon refractions.">Cyberpunk Neon Shift</button>
@@ -172,10 +235,14 @@
                     <button type="button" class="chip" data-prompt="Blend high-saturation tropical sunset tones, warm peach flares, and translucent pink glass.">Vaporwave Sunset Glow</button>
                   </div>
                   
-                  <button type="button" id="applyAiStylesBtn" class="button primary-glow">Apply AI Enhancements</button>
+                  <div class="ai-actions">
+                    <button type="button" id="transformAssetBtn" class="button primary-glow">Transform Source Asset</button>
+                    <button type="button" id="applyAiStylesBtn" class="button secondary">Tune Renderer Theme</button>
+                  </div>
                   <div id="aiProgressMessage" class="ai-progress-message hidden">
                     <span class="spinner"></span> <span>Consulting Gemini...</span>
                   </div>
+                  <div id="aiValidationPanel" class="ai-validation-panel hidden"></div>
                 </div>
               </div>
             </div>

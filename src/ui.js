@@ -94,6 +94,17 @@ const assetList = document.querySelector("#assetList");
 const assetScale = document.querySelector("#assetScale");
 const assetScaleValue = document.querySelector("#assetScaleValue");
 const frameEnabledToggle = document.querySelector("#frameEnabledToggle");
+const installAppBtn = document.querySelector("#installAppBtn");
+const classicWorkflowBtn = document.querySelector("#classicWorkflowBtn");
+const aiWorkflowBtn = document.querySelector("#aiWorkflowBtn");
+const batchQueue = document.querySelector("#batchQueue");
+const prepTrim = document.querySelector("#prepTrim");
+const prepRemoveBg = document.querySelector("#prepRemoveBg");
+const prepFitMode = document.querySelector("#prepFitMode");
+const prepPadding = document.querySelector("#prepPadding");
+const prepPaddingValue = document.querySelector("#prepPaddingValue");
+const applyPrepBtn = document.querySelector("#applyPrepBtn");
+const resetPrepBtn = document.querySelector("#resetPrepBtn");
 
 // New UI Selectors
 const openSettingsBtn = document.querySelector("#openSettingsBtn");
@@ -109,9 +120,13 @@ const apiStatusMessage = document.querySelector("#apiStatusMessage");
 const aiEnabledToggle = document.querySelector("#aiEnabledToggle");
 const aiConsoleContent = document.querySelector("#aiConsoleContent");
 const aiPrompt = document.querySelector("#aiPrompt");
+const aiShapeLock = document.querySelector("#aiShapeLock");
+const aiColorMode = document.querySelector("#aiColorMode");
+const transformAssetBtn = document.querySelector("#transformAssetBtn");
 const applyAiStylesBtn = document.querySelector("#applyAiStylesBtn");
 const aiProgressMessage = document.querySelector("#aiProgressMessage");
 const aiActiveBadge = document.querySelector("#aiActiveBadge");
+const aiValidationPanel = document.querySelector("#aiValidationPanel");
 
 const singleAssetPreset = document.querySelector("#singleAssetPreset");
 const webPackPreset = document.querySelector("#webPackPreset");
@@ -127,11 +142,14 @@ const dropZoneLabel = document.querySelector("#dropZoneLabel");
 
 // --- APP STATE ---
 let currentAsset;
+let assetQueue = [];
+let activeAssetIndex = 0;
 let generatedAssets = [];
 let hasManualAssetScale = false;
 let customAiTheme = null;
 let activePreset = "single"; // "single" or "pack"
 let previewRenderToken = 0;
+let deferredInstallPrompt = null;
 
 const TEST_KEY_VAL = "AQ" + "." + "Ab8RN6Ix7N0" + "AAz1" + "ZyL3" + "2oFm" + "W8qc" + "BNYZ" + "NoAB" + "2L1t" + "cOpy" + "cicq" + "xxQ";
 
@@ -159,6 +177,31 @@ function showToast(message, type = "success") {
 }
 
 // --- EVENT LISTENERS ---
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.warn("Service worker registration failed.", err);
+    });
+  });
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installAppBtn?.classList.remove("hidden");
+});
+
+installAppBtn?.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice.catch(() => undefined);
+  deferredInstallPrompt = null;
+  installAppBtn.classList.add("hidden");
+});
+
+classicWorkflowBtn?.addEventListener("click", () => setWorkflow("classic"));
+aiWorkflowBtn?.addEventListener("click", () => setWorkflow("ai"));
 
 // Background Frame Toggle
 if (frameEnabledToggle) {
@@ -246,12 +289,13 @@ aiEnabledToggle.addEventListener("change", () => {
   const isEnabled = aiEnabledToggle.checked;
 
   if (isEnabled) {
+    document.body.dataset.workflow = "ai";
+    classicWorkflowBtn?.classList.remove("active");
+    aiWorkflowBtn?.classList.add("active");
     const savedKey = localStorage.getItem("miyagi_gemini_key");
     if (!savedKey) {
-      aiEnabledToggle.checked = false;
       showToast("Gemini API key required! Opening settings...", "error");
       openSettingsBtn.click();
-      return;
     }
     aiConsoleContent.classList.remove("collapsed");
     if (customAiTheme) {
@@ -259,6 +303,9 @@ aiEnabledToggle.addEventListener("change", () => {
       applyThemeObject(customAiTheme);
     }
   } else {
+    document.body.dataset.workflow = "classic";
+    classicWorkflowBtn?.classList.add("active");
+    aiWorkflowBtn?.classList.remove("active");
     aiConsoleContent.classList.add("collapsed");
     aiActiveBadge.classList.add("hidden");
     applyTheme(themeSelect.value);
@@ -276,6 +323,8 @@ document.querySelectorAll(".chip").forEach((chip) => {
     showToast(`Loaded "${chip.textContent}" preset!`, "info");
   });
 });
+
+transformAssetBtn?.addEventListener("click", transformCurrentAssetWithAi);
 
 // Apply AI Styles Button
 applyAiStylesBtn.addEventListener("click", async () => {
@@ -385,8 +434,7 @@ assetScale.addEventListener("input", () => {
 });
 
 assetInput.addEventListener("change", async (event) => {
-  const [file] = event.target.files;
-  await loadAssetFile(file);
+  await loadAssetFiles([...event.target.files]);
 });
 
 // Drag & Drop
@@ -402,9 +450,15 @@ dropZoneLabel.addEventListener("dragleave", () => {
 dropZoneLabel.addEventListener("drop", async (event) => {
   event.preventDefault();
   dropZoneLabel.classList.remove("is-dragging");
-  const [file] = event.dataTransfer.files;
-  await loadAssetFile(file);
+  await loadAssetFiles([...event.dataTransfer.files]);
 });
+
+prepPadding?.addEventListener("input", () => {
+  prepPaddingValue.textContent = `${prepPadding.value}%`;
+});
+
+applyPrepBtn?.addEventListener("click", applySourcePrepToCurrentAsset);
+resetPrepBtn?.addEventListener("click", resetCurrentAssetSource);
 
 generateButton.addEventListener("click", generateAssets);
 downloadAllButton.addEventListener("click", downloadZip);
@@ -429,6 +483,7 @@ document.querySelectorAll(".bg-opt").forEach((btn) => {
 });
 
 // --- INIT APP ---
+document.body.dataset.workflow = "classic";
 applyTheme("liquid-glass");
 applyAssetScale();
 loadDefaultIcon();
@@ -600,6 +655,157 @@ Respond ONLY with raw valid JSON. Do not include markdown code block formatting 
   return JSON.parse(text);
 }
 
+async function transformCurrentAssetWithAi() {
+  if (!currentAsset) {
+    showToast("Upload a source asset first.", "error");
+    return;
+  }
+
+  const key = localStorage.getItem("miyagi_gemini_key");
+  if (!key) {
+    showToast("Please configure your Gemini API key first.", "error");
+    openSettingsBtn.click();
+    return;
+  }
+
+  transformAssetBtn.disabled = true;
+  aiProgressMessage.classList.remove("hidden");
+  aiValidationPanel.classList.add("hidden");
+  setStatus("Transforming source asset with AI...");
+
+  try {
+    const prompt = buildAiTransformPrompt();
+    const imageDataUri = await ensurePngDataUri(currentAsset.dataUri);
+    const transformed = await fetchAiImageTransform({
+      key,
+      imageDataUri,
+      prompt
+    });
+    const validation = await validateTransformedAsset(transformed);
+
+    currentAsset = {
+      ...currentAsset,
+      filename: `${currentAsset.name}-ai-transform.png`,
+      type: "raster",
+      dataUri: transformed,
+      markup: `<img src="${transformed}" alt="">`,
+      prepared: true
+    };
+    assetQueue[activeAssetIndex] = currentAsset;
+    setCurrentAsset(currentAsset, activeAssetIndex);
+    renderAiValidation(validation);
+    invalidateGeneratedAssets("AI transform changed source");
+    aiActiveBadge.classList.remove("hidden");
+    showToast("AI source transform applied.", "success");
+    setStatus("AI transformed source ready");
+  } catch (err) {
+    console.error(err);
+    renderAiValidation({ ok: false, notes: [err.message] });
+    showToast(`AI transform failed: ${err.message}`, "error");
+    setStatus("AI transform failed");
+  } finally {
+    transformAssetBtn.disabled = false;
+    aiProgressMessage.classList.add("hidden");
+  }
+}
+
+function buildAiTransformPrompt() {
+  const theme = getActiveTheme();
+  const renderer = theme?.renderer || "glass";
+  const shapeLock = aiShapeLock?.value || "strict";
+  const colorMode = aiColorMode?.value || "preserve";
+  const userPrompt = aiPrompt.value.trim() || "Polish the input as a premium application icon source asset.";
+  const recipes = {
+    "chrome-metallic": "Create a brave-browser-quality chrome object: liquid silver volume, contour-wrapped reflection bands, cyan/magenta iridescent rim light, embedded glints that look reflected from the shape, transparent background, no extra objects.",
+    "discomorphism": "Create a premium mirrored disco-tile source: rounded convex mosaic facets, cohesive environment reflections, lavender/cyan/rose iridescence, transparent background, no unrelated background scene.",
+    "crystal-liquid": "Create a polished liquid crystal source: translucent emerald body, caustic highlights, soft edge refraction, clean transparent background.",
+    "glass": "Create a clean luxury glass-ready source: crisp alpha, refined edges, subtle dimensional polish, transparent background."
+  };
+
+  return [
+    "Edit the provided source asset, do not create a new unrelated logo.",
+    recipes[renderer] || recipes.glass,
+    `Shape lock: ${shapeLock}. ${shapeLock === "strict" ? "Preserve silhouette, proportions, and core mark identity." : shapeLock === "balanced" ? "Allow small material-driven changes while keeping the mark recognizable." : "Allow expressive material interpretation while keeping the mark readable."}`,
+    `Color mode: ${colorMode}.`,
+    "Output one centered square PNG with a transparent background. Avoid text, mockups, UI frames, watermarking, or background scenery.",
+    `User direction: ${userPrompt}`
+  ].join("\n");
+}
+
+async function fetchAiImageTransform({ key, imageDataUri, prompt }) {
+  const { mimeType, data } = splitDataUri(imageDataUri);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${key}`;
+  const response = await fetchWithTimeout(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{
+        role: "user",
+        parts: [
+          { inlineData: { mimeType, data } },
+          { text: prompt }
+        ]
+      }],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"]
+      }
+    })
+  }, 45000);
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || "Gemini image transform failed.");
+  }
+
+  const result = await response.json();
+  const imagePart = result.candidates
+    ?.flatMap((candidate) => candidate.content?.parts || [])
+    .find((part) => part.inlineData?.data);
+
+  if (!imagePart) {
+    const text = result.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join(" ");
+    throw new Error(text || "Gemini returned no image. Try a stricter, clearer transform prompt.");
+  }
+
+  return `data:${imagePart.inlineData.mimeType || "image/png"};base64,${imagePart.inlineData.data}`;
+}
+
+async function ensurePngDataUri(dataUri) {
+  if (dataUri.startsWith("data:image/png")) return dataUri;
+  const image = await loadImage(dataUri);
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext("2d");
+  drawContainedImage(ctx, image, 0, 0, 1024, 1024);
+  return canvas.toDataURL("image/png");
+}
+
+async function validateTransformedAsset(dataUri) {
+  const image = await loadImage(dataUri);
+  const square = Math.abs(image.width - image.height) <= 2;
+  return {
+    ok: square,
+    notes: [
+      `${image.width}x${image.height}px output`,
+      square ? "Square source confirmed" : "Output is not square; Source Prep can square it",
+      "Transparent-background quality depends on model response; use Source Prep if needed"
+    ]
+  };
+}
+
+function renderAiValidation(result) {
+  if (!aiValidationPanel) return;
+  aiValidationPanel.classList.remove("hidden");
+  aiValidationPanel.innerHTML = `
+    <div class="mini-panel-header">
+      <span>${result.ok ? "AI validation passed" : "AI validation needs review"}</span>
+      <small>${result.ok ? "ready for renderer" : "retry or prep source"}</small>
+    </div>
+    <ul>${result.notes.map((note) => `<li>${note}</li>`).join("")}</ul>
+  `;
+}
+
 function normalizeThemeObject(theme) {
   const norm = { ...theme };
   norm.renderer = norm.renderer || "glass";
@@ -699,6 +905,31 @@ function applyAssetScale() {
   assetScaleValue.value = `${Math.round(scale * 100)}%`;
 }
 
+function setWorkflow(workflow) {
+  const next = workflow === "ai" ? "ai" : "classic";
+  document.body.dataset.workflow = next;
+  classicWorkflowBtn?.classList.toggle("active", next === "classic");
+  aiWorkflowBtn?.classList.toggle("active", next === "ai");
+
+  if (next === "ai") {
+    if (!aiEnabledToggle.checked) {
+      aiEnabledToggle.checked = true;
+      aiConsoleContent.classList.remove("collapsed");
+    }
+    showToast("AI Transform Lab enabled.", "info");
+  } else {
+    aiEnabledToggle.checked = false;
+    aiConsoleContent.classList.add("collapsed");
+    aiActiveBadge.classList.add("hidden");
+    customAiTheme = null;
+    applyTheme(themeSelect.value);
+    showToast("Classic deterministic renderer enabled.", "info");
+  }
+
+  updateCommand();
+  updatePreviewGlyph();
+}
+
 function setLayeredPreviewGlyph() {
   iconPreview.dataset.materialPreview = "layers";
   previewGlyph.innerHTML = currentAsset?.markup || "";
@@ -750,13 +981,42 @@ function loadDefaultIcon() {
     filename: "miyagi-leaf.svg",
     type: "svg",
     dataUri: svgToDataUri(svg),
-    markup: svg
+    markup: svg,
+    originalDataUri: svgToDataUri(svg),
+    originalMarkup: svg,
+    originalType: "svg",
+    prepared: false
   };
+  assetQueue = [currentAsset];
+  activeAssetIndex = 0;
+  renderBatchQueue();
   updatePreviewGlyph();
 }
 
-async function loadAssetFile(file) {
-  if (!file) return;
+async function loadAssetFiles(files) {
+  const assets = [];
+  for (const file of files) {
+    const asset = await createAssetFromFile(file);
+    if (asset) assets.push(asset);
+  }
+
+  if (!assets.length) return;
+
+  assetQueue = assets;
+  activeAssetIndex = 0;
+  setCurrentAsset(assetQueue[0]);
+  renderBatchQueue();
+
+  generatedAssets = [];
+  downloadAllButton.disabled = true;
+  integrationCodeBlock.classList.add("hidden");
+  renderEmptyAssets();
+  showToast(`Loaded ${assets.length} source asset${assets.length === 1 ? "" : "s"}.`, "success");
+  setStatus(assets.length > 1 ? `${assets.length} assets queued` : "Ready to generate");
+}
+
+async function createAssetFromFile(file) {
+  if (!file) return null;
 
   const extension = file.name.split(".").pop()?.toLowerCase();
   const isSvg = extension === "svg" || file.type === "image/svg+xml";
@@ -765,40 +1025,234 @@ async function loadAssetFile(file) {
   if (!isSvg && !isRaster) {
     showToast("File format must be SVG, PNG, or JPG.", "error");
     setStatus("Use SVG, PNG, or JPG");
-    return;
+    return null;
   }
 
   const name = file.name.replace(/\.[^.]+$/, "");
 
   if (isSvg) {
     const svg = sanitizeSvg(await file.text());
-    currentAsset = {
+    const dataUri = svgToDataUri(svg);
+    return {
       name,
       filename: file.name,
       type: "svg",
-      dataUri: svgToDataUri(svg),
-      markup: svg
-    };
-  } else {
-    const dataUri = await fileToDataUri(file);
-    currentAsset = {
-      name,
-      filename: file.name,
-      type: "raster",
       dataUri,
-      markup: `<img src="${dataUri}" alt="">`
+      markup: svg,
+      originalDataUri: dataUri,
+      originalMarkup: svg,
+      originalType: "svg",
+      prepared: false
     };
   }
 
-  updatePreviewGlyph();
+  const dataUri = await fileToDataUri(file);
+  return {
+    name,
+    filename: file.name,
+    type: "raster",
+    dataUri,
+    markup: `<img src="${dataUri}" alt="">`,
+    originalDataUri: dataUri,
+    originalMarkup: `<img src="${dataUri}" alt="">`,
+    originalType: "raster",
+    prepared: false
+  };
+}
 
-  assetName.textContent = file.name;
-  generatedAssets = [];
-  downloadAllButton.disabled = true;
-  integrationCodeBlock.classList.add("hidden");
-  renderEmptyAssets();
-  showToast(`Loaded ${file.name} successfully!`, "success");
-  setStatus("Ready to generate");
+function setCurrentAsset(asset, index = activeAssetIndex) {
+  currentAsset = asset;
+  activeAssetIndex = index;
+  assetName.textContent = asset.filename;
+  updatePreviewGlyph();
+  renderBatchQueue();
+}
+
+function renderBatchQueue() {
+  if (!batchQueue) return;
+  batchQueue.innerHTML = "";
+
+  if (assetQueue.length <= 1) {
+    batchQueue.classList.add("hidden");
+    return;
+  }
+
+  batchQueue.classList.remove("hidden");
+  assetQueue.forEach((asset, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `batch-item${index === activeAssetIndex ? " active" : ""}`;
+    button.innerHTML = `
+      <span class="batch-item-name">${asset.filename}</span>
+      <span class="batch-item-meta">${asset.prepared ? "prepped" : asset.type}</span>
+    `;
+    button.addEventListener("click", () => setCurrentAsset(asset, index));
+    batchQueue.append(button);
+  });
+}
+
+async function applySourcePrepToCurrentAsset() {
+  if (!currentAsset) return;
+
+  try {
+    setStatus("Preparing source asset...");
+    const source = currentAsset.originalDataUri || currentAsset.dataUri;
+    const preparedDataUri = await prepareAssetDataUri(source, {
+      trim: prepTrim?.checked ?? true,
+      removeBg: prepRemoveBg?.checked ?? false,
+      fitMode: prepFitMode?.value || "contain",
+      padding: Number(prepPadding?.value || 12) / 100
+    });
+
+    currentAsset = {
+      ...currentAsset,
+      type: "raster",
+      dataUri: preparedDataUri,
+      markup: `<img src="${preparedDataUri}" alt="">`,
+      prepared: true
+    };
+    assetQueue[activeAssetIndex] = currentAsset;
+    setCurrentAsset(currentAsset, activeAssetIndex);
+    invalidateGeneratedAssets("Source prep changed");
+    showToast("Source prep applied.", "success");
+    setStatus("Source prepared");
+  } catch (err) {
+    console.error(err);
+    showToast(`Source prep failed: ${err.message}`, "error");
+    setStatus("Source prep failed");
+  }
+}
+
+function resetCurrentAssetSource() {
+  if (!currentAsset?.originalDataUri) return;
+  currentAsset = {
+    ...currentAsset,
+    type: currentAsset.originalType || "raster",
+    dataUri: currentAsset.originalDataUri,
+    markup: currentAsset.originalMarkup,
+    prepared: false
+  };
+  assetQueue[activeAssetIndex] = currentAsset;
+  setCurrentAsset(currentAsset, activeAssetIndex);
+  invalidateGeneratedAssets("Source reset");
+  showToast("Source reset to original.", "info");
+}
+
+async function prepareAssetDataUri(source, options) {
+  const image = await loadImage(source);
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = image.naturalWidth || image.width;
+  sourceCanvas.height = image.naturalHeight || image.height;
+  const sourceCtx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  sourceCtx.drawImage(image, 0, 0);
+
+  let imageData = sourceCtx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+  if (options.removeBg) {
+    imageData = removeFlatBackground(imageData);
+    sourceCtx.putImageData(imageData, 0, 0);
+  }
+
+  const bounds = options.trim ? findAlphaBounds(imageData) : {
+    x: 0,
+    y: 0,
+    width: sourceCanvas.width,
+    height: sourceCanvas.height
+  };
+
+  const outputSize = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = outputSize;
+  canvas.height = outputSize;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  const safe = outputSize * clampNumber(options.padding, 0, 0.28);
+  const drawBox = outputSize - safe * 2;
+  const scale = options.fitMode === "cover"
+    ? Math.max(drawBox / bounds.width, drawBox / bounds.height)
+    : Math.min(drawBox / bounds.width, drawBox / bounds.height);
+  const drawWidth = bounds.width * scale;
+  const drawHeight = bounds.height * scale;
+  const dx = (outputSize - drawWidth) / 2;
+  const dy = (outputSize - drawHeight) / 2;
+
+  ctx.drawImage(
+    sourceCanvas,
+    bounds.x,
+    bounds.y,
+    bounds.width,
+    bounds.height,
+    dx,
+    dy,
+    drawWidth,
+    drawHeight
+  );
+
+  return canvas.toDataURL("image/png");
+}
+
+function removeFlatBackground(imageData) {
+  const { data, width, height } = imageData;
+  const sample = [
+    getPixel(data, width, 0, 0),
+    getPixel(data, width, width - 1, 0),
+    getPixel(data, width, 0, height - 1),
+    getPixel(data, width, width - 1, height - 1)
+  ];
+  const bg = sample.reduce((acc, pixel) => {
+    acc[0] += pixel[0];
+    acc[1] += pixel[1];
+    acc[2] += pixel[2];
+    return acc;
+  }, [0, 0, 0]).map((value) => value / sample.length);
+
+  for (let i = 0; i < data.length; i += 4) {
+    const dist = Math.hypot(data[i] - bg[0], data[i + 1] - bg[1], data[i + 2] - bg[2]);
+    if (dist < 42) {
+      data[i + 3] = 0;
+    } else if (dist < 88) {
+      data[i + 3] = Math.round(data[i + 3] * ((dist - 42) / 46));
+    }
+  }
+
+  return imageData;
+}
+
+function getPixel(data, width, x, y) {
+  const i = (y * width + x) * 4;
+  return [data[i], data[i + 1], data[i + 2], data[i + 3]];
+}
+
+function findAlphaBounds(imageData) {
+  const { data, width, height } = imageData;
+  let minX = width;
+  let minY = height;
+  let maxX = 0;
+  let maxY = 0;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = data[(y * width + x) * 4 + 3];
+      if (alpha > 10) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (minX > maxX || minY > maxY) {
+    return { x: 0, y: 0, width, height };
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(1, maxX - minX + 1),
+    height: Math.max(1, maxY - minY + 1)
+  };
 }
 
 // --- GENERATION ENGINE CONTROLLERS ---
@@ -837,11 +1291,12 @@ async function generateAssets() {
   const steps = [];
 
   try {
-    const image = await loadImage(currentAsset.dataUri);
     const theme = (aiEnabledToggle.checked && customAiTheme)
       ? customAiTheme
       : THEMES[themeSelect.value];
     const scale = getAssetScale();
+    const renderItems = assetQueue.length ? assetQueue : [currentAsset];
+    const isBatch = renderItems.length > 1;
 
     if (activePreset === "single") {
       const sizes = getSelectedValues("size").map(Number);
@@ -855,125 +1310,106 @@ async function generateAssets() {
         return;
       }
 
-      for (const size of sizes) {
-        if (formats.includes("png")) {
-          steps.push({
-            label: `Render PNG Icon (${size}x${size})`,
-            run: async () => {
-              const blob = await renderPng({ size, image, theme, assetScale: scale });
-              generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${theme.renderer}-${size}.png`, blob));
-            }
-          });
-        }
+      for (const item of renderItems) {
+        for (const size of sizes) {
+          if (formats.includes("png")) {
+            steps.push({
+              label: `Render ${item.name} PNG (${size}x${size})`,
+              run: async () => {
+                const image = await loadImage(item.dataUri);
+                const blob = await renderPng({ size, image, theme, assetScale: scale });
+                const prefix = isBatch ? `${item.name}/` : "";
+                generatedAssets.push(createGeneratedAsset(`${prefix}${item.name}-${theme.renderer}-${size}.png`, blob));
+              }
+            });
+          }
 
-        if (formats.includes("svg")) {
-          steps.push({
-            label: `Render SVG Icon (${size}x${size})`,
-            run: async () => {
-              const svg = renderSvg({ size, asset: currentAsset, theme, assetScale: scale });
-              const blob = new Blob([svg], { type: "image/svg+xml" });
-              generatedAssets.push(createGeneratedAsset(`${currentAsset.name}-${theme.renderer}-${size}.svg`, blob));
-            }
-          });
+          if (formats.includes("svg")) {
+            steps.push({
+              label: `Render ${item.name} SVG (${size}x${size})`,
+              run: async () => {
+                const svg = renderSvg({ size, asset: item, theme, assetScale: scale });
+                const blob = new Blob([svg], { type: "image/svg+xml" });
+                const prefix = isBatch ? `${item.name}/` : "";
+                generatedAssets.push(createGeneratedAsset(`${prefix}${item.name}-${theme.renderer}-${size}.svg`, blob));
+              }
+            });
+          }
         }
       }
     } else {
-      // Full Web Asset Pack Preset
-      // 1. Favicons
-      steps.push({
-        label: "Render Standard Favicons (16x16, 32x32, ICO)",
-        run: async () => {
-          const fav16 = await renderPng({ size: 16, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("favicons/favicon-16x16.png", fav16));
+      for (const item of renderItems) {
+        const root = isBatch ? `${item.name}/` : "";
+        steps.push({
+          label: `Render ${item.name} favicons`,
+          run: async () => {
+            const image = await loadImage(item.dataUri);
+            const fav16 = await renderPng({ size: 16, image, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}favicons/favicon-16x16.png`, fav16));
 
-          const fav32 = await renderPng({ size: 32, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("favicons/favicon-32x32.png", fav32));
+            const fav32 = await renderPng({ size: 32, image, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}favicons/favicon-32x32.png`, fav32));
 
-          const icoBlob = await createIcoFromPng(fav32);
-          generatedAssets.push(createGeneratedAsset("favicons/favicon.ico", icoBlob));
-        }
-      });
+            const icoBlob = await createIcoFromPng(fav32);
+            generatedAssets.push(createGeneratedAsset(`${root}favicons/favicon.ico`, icoBlob));
+          }
+        });
 
-      // 2. iOS Launcher
-      steps.push({
-        label: "Render iOS Launcher Icon (apple-touch-icon.png)",
-        run: async () => {
-          const appleTouch = await renderPng({ size: 180, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("mobile/apple-touch-icon.png", appleTouch));
-        }
-      });
+        steps.push({
+          label: `Render ${item.name} launcher icons`,
+          run: async () => {
+            const image = await loadImage(item.dataUri);
+            const appleTouch = await renderPng({ size: 180, image, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}mobile/apple-touch-icon.png`, appleTouch));
 
-      // 3. Android Launchers
-      steps.push({
-        label: "Render Android Launchers (192x192 & 512x512)",
-        run: async () => {
-          const android192 = await renderPng({ size: 192, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("mobile/android-chrome-192x192.png", android192));
+            const android192 = await renderPng({ size: 192, image, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}mobile/android-chrome-192x192.png`, android192));
 
-          const android512 = await renderPng({ size: 512, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("mobile/android-chrome-512x512.png", android512));
-        }
-      });
+            const android512 = await renderPng({ size: 512, image, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}mobile/android-chrome-512x512.png`, android512));
+          }
+        });
 
-      // 4. Windows Tile
-      steps.push({
-        label: "Render Windows Tile (mstile-150x150.png)",
-        run: async () => {
-          const winTile = await renderPng({ size: 150, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("desktop/mstile-150x150.png", winTile));
-        }
-      });
+        steps.push({
+          label: `Render ${item.name} desktop/vector/marketing pack`,
+          run: async () => {
+            const image = await loadImage(item.dataUri);
+            const winTile = await renderPng({ size: 150, image, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}desktop/mstile-150x150.png`, winTile));
 
-      // 4b. Master High-Res PNG
-      steps.push({
-        label: "Render Master High-Res Desktop Icon (app-icon-1024x1024.png)",
-        run: async () => {
-          const highResPng = await renderPng({ size: 1024, image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("desktop/app-icon-1024x1024.png", highResPng));
-        }
-      });
+            const highResPng = await renderPng({ size: 1024, image, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}desktop/app-icon-1024x1024.png`, highResPng));
 
-      // 4c. Scalable Vector SVG
-      steps.push({
-        label: "Render Scalable Vector Icon (vector-icon.svg)",
-        run: async () => {
-          const vectorSvg = renderSvg({ size: 512, asset: currentAsset, theme, assetScale: scale });
-          const blob = new Blob([vectorSvg], { type: "image/svg+xml" });
-          generatedAssets.push(createGeneratedAsset("vector/vector-icon.svg", blob));
-        }
-      });
+            const vectorSvg = renderSvg({ size: 512, asset: item, theme, assetScale: scale });
+            generatedAssets.push(createGeneratedAsset(`${root}vector/vector-icon.svg`, new Blob([vectorSvg], { type: "image/svg+xml" })));
 
-      // 5. Marketing Banner
-      steps.push({
-        label: "Render Showcase Marketing Banner (og-image.png)",
-        run: async () => {
-          const ogBanner = await renderOgImage({ image, theme, assetScale: scale });
-          generatedAssets.push(createGeneratedAsset("marketing/og-image.png", ogBanner));
-        }
-      });
+            const ogBanner = await renderOgImage({ image, theme, assetScale: scale, assetName: item.name });
+            generatedAssets.push(createGeneratedAsset(`${root}marketing/og-image.png`, ogBanner));
+          }
+        });
 
-      // 6. Web Manifest & HTML Integration Tags
-      steps.push({
-        label: "Generate Web App Manifest & HTML Tags",
-        run: async () => {
-          const themeColor = theme.bg?.[0] || theme.background?.[0] || "#ffffff";
-          const manifest = JSON.stringify({
-            name: currentAsset.name,
-            short_name: currentAsset.name.slice(0, 12),
-            icons: [
-              { src: "/mobile/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
-              { src: "/mobile/android-chrome-512x512.png", sizes: "512x512", type: "image/png" }
-            ],
-            theme_color: themeColor,
-            background_color: "#08090d",
-            display: "standalone"
-          }, null, 2);
-          generatedAssets.push(createGeneratedAsset("site.webmanifest", new Blob([manifest], { type: "application/json" })));
-
-          // Render integration HTML code
-          renderHeadIntegrationSnippet(theme);
-        }
-      });
+        steps.push({
+          label: `Generate ${item.name} manifest and HTML tags`,
+          run: async () => {
+            const themeColor = theme.bg?.[0] || theme.background?.[0] || "#ffffff";
+            const manifest = JSON.stringify({
+              name: item.name,
+              short_name: item.name.slice(0, 12),
+              start_url: ".",
+              scope: ".",
+              icons: [
+                { src: "/mobile/android-chrome-192x192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+                { src: "/mobile/android-chrome-512x512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+              ],
+              theme_color: themeColor,
+              background_color: "#08090d",
+              display: "standalone"
+            }, null, 2);
+            generatedAssets.push(createGeneratedAsset(`${root}site.webmanifest`, new Blob([manifest], { type: "application/json" })));
+            if (!isBatch || item === currentAsset) renderHeadIntegrationSnippet(theme);
+          }
+        });
+      }
     }
 
     // Add a final step to finalize the bundle and update UI
@@ -1089,7 +1525,7 @@ function renderPng({ size, image, theme, assetScale, useFrame }) {
 }
 
 // --- LUXURY OPEN GRAPH CANVAS BUILDER ---
-async function renderOgImage({ image, theme, assetScale }) {
+async function renderOgImage({ image, theme, assetScale, assetName }) {
   const canvas = document.createElement("canvas");
   canvas.width = 1200;
   canvas.height = 630;
@@ -1173,7 +1609,8 @@ async function renderOgImage({ image, theme, assetScale }) {
   ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
   ctx.font = "normal 11px Outfit, Inter, sans-serif";
   ctx.letterSpacing = "1.5px";
-  ctx.fillText(`${theme.name.toUpperCase()} THEME • GEMINI AI ENHANCED`, 600, 545);
+  const label = theme.name || theme.renderer || assetName || "MIYAGI";
+  ctx.fillText(`${label.toUpperCase()} THEME • MIYAGI STUDIO`, 600, 545);
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/png");
@@ -1501,6 +1938,8 @@ function drawChromeIcon(ctx, { size, image, theme, assetScale, useFrame }) {
   ctx.drawImage(edgeCanvas, 0, 0);
   ctx.restore();
 
+  drawEmbeddedChromeGlints(ctx, mask, size, accentColors);
+
   ctx.save();
   ctx.globalCompositeOperation = "multiply";
   ctx.globalAlpha = 0.22;
@@ -1509,9 +1948,79 @@ function drawChromeIcon(ctx, { size, image, theme, assetScale, useFrame }) {
 
   if (useFrame) {
     const accentColor = accentColors[1] || accentColors[0];
-    drawStar(ctx, size * 0.68, size * 0.2, size * 0.04, "#ffffff", 0.88);
-    drawStar(ctx, size * 0.67, size * 0.73, size * 0.035, accentColor, 0.82);
+    drawStar(ctx, size * 0.68, size * 0.2, size * 0.032, "#ffffff", 0.62);
+    drawStar(ctx, size * 0.67, size * 0.73, size * 0.026, accentColor, 0.54);
   }
+}
+
+function drawEmbeddedChromeGlints(ctx, mask, size, accentColors) {
+  const points = findMaskEdgeGlints(mask, size);
+  if (!points.length) return;
+
+  const glintCanvas = document.createElement("canvas");
+  glintCanvas.width = size;
+  glintCanvas.height = size;
+  const glintCtx = glintCanvas.getContext("2d");
+  glintCtx.drawImage(mask, 0, 0);
+  glintCtx.globalCompositeOperation = "source-in";
+
+  points.forEach((point, index) => {
+    const color = accentColors[index % accentColors.length] || "#ffffff";
+    drawStar(glintCtx, point.x, point.y, point.r, color, point.alpha);
+    const streak = glintCtx.createLinearGradient(point.x - point.r * 4, point.y, point.x + point.r * 4, point.y);
+    streak.addColorStop(0, "rgba(255,255,255,0)");
+    streak.addColorStop(0.5, withAlpha(color, point.alpha * 0.5));
+    streak.addColorStop(1, "rgba(255,255,255,0)");
+    glintCtx.save();
+    glintCtx.translate(point.x, point.y);
+    glintCtx.rotate(point.angle);
+    glintCtx.fillStyle = streak;
+    glintCtx.fillRect(-point.r * 4, -point.r * 0.18, point.r * 8, point.r * 0.36);
+    glintCtx.restore();
+  });
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.drawImage(glintCanvas, 0, 0);
+  ctx.restore();
+}
+
+function findMaskEdgeGlints(mask, size) {
+  const probe = document.createElement("canvas");
+  const sample = 96;
+  probe.width = sample;
+  probe.height = sample;
+  const probeCtx = probe.getContext("2d", { willReadFrequently: true });
+  probeCtx.drawImage(mask, 0, 0, sample, sample);
+  const { data } = probeCtx.getImageData(0, 0, sample, sample);
+  const candidates = [];
+
+  for (let y = 2; y < sample - 2; y += 2) {
+    for (let x = 2; x < sample - 2; x += 2) {
+      const alpha = data[(y * sample + x) * 4 + 3];
+      if (alpha < 100) continue;
+
+      const right = data[(y * sample + x + 1) * 4 + 3];
+      const left = data[(y * sample + x - 1) * 4 + 3];
+      const down = data[((y + 1) * sample + x) * 4 + 3];
+      const up = data[((y - 1) * sample + x) * 4 + 3];
+      const edgeEnergy = Math.abs(right - left) + Math.abs(down - up);
+      const bias = (x / sample) * 0.7 + (1 - y / sample) * 0.3;
+      if (edgeEnergy > 80) candidates.push({ x, y, score: edgeEnergy + bias * 160 });
+    }
+  }
+
+  return candidates
+    .sort((a, b) => b.score - a.score)
+    .filter((point, index, list) => list.slice(0, index).every((other) => Math.hypot(point.x - other.x, point.y - other.y) > 18))
+    .slice(0, 3)
+    .map((point, index) => ({
+      x: (point.x / sample) * size,
+      y: (point.y / sample) * size,
+      r: size * (index === 0 ? 0.032 : 0.022),
+      alpha: index === 0 ? 0.62 : 0.42,
+      angle: index % 2 ? -0.75 : 0.55
+    }));
 }
 
 // --- DETERMINISTIC SVG RENDERERS ---
@@ -1857,6 +2366,17 @@ function fileToDataUri(file) {
   });
 }
 
+function splitDataUri(dataUri) {
+  const match = dataUri.match(/^data:([^;,]+);base64,(.*)$/);
+  if (match) return { mimeType: match[1], data: match[2] };
+
+  const encoded = dataUri.split(",")[1] || "";
+  return {
+    mimeType: dataUri.match(/^data:([^;,]+)/)?.[1] || "image/png",
+    data: btoa(decodeURIComponent(encoded))
+  };
+}
+
 function svgToDataUri(svg) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
@@ -1871,6 +2391,10 @@ function sanitizeSvg(svg) {
 function contain(width, height, maxWidth, maxHeight) {
   const scale = Math.min(maxWidth / width, maxHeight / height);
   return { width: width * scale, height: height * scale };
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 // Fixed getAssetScale fallback for AI custom scales

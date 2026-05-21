@@ -828,6 +828,7 @@ function composeChromeMetallicHtml({ icon, theme, outputSize, assetScale }) {
       <div class="metal-fill glyph-mask"></div>
       <div class="metal-bands glyph-mask"></div>
       <div class="metal-edge glyph-mask"></div>
+      <div class="metal-glints glyph-mask"></div>
       <div class="source-lines">${icon.markup}</div>
       <div class="chrome-star s1"></div>
       <div class="chrome-star s2"></div>
@@ -956,6 +957,20 @@ html, body, .stage {
   z-index: 6;
 }
 
+.metal-glints {
+  background:
+    radial-gradient(circle at 72% 18%, rgba(255,255,255,.95) 0 2.5%, color-mix(in srgb, ${accent[0]} 72%, transparent) 3.5%, transparent 8%),
+    linear-gradient(118deg, transparent 0 54%, rgba(255,255,255,.72) 56%, transparent 59%),
+    radial-gradient(circle at 31% 68%, color-mix(in srgb, ${accent[1]} 62%, white) 0 1.8%, transparent 6%),
+    linear-gradient(34deg, transparent 0 28%, rgba(255,255,255,.38) 30%, transparent 34%);
+  filter:
+    drop-shadow(0 0 calc(var(--size) * .006) rgba(255,255,255,.85))
+    drop-shadow(0 0 calc(var(--size) * .018) ${accent[0]});
+  mix-blend-mode: screen;
+  opacity: .66;
+  z-index: 7;
+}
+
 .source-lines {
   display: grid;
   place-items: center;
@@ -964,7 +979,7 @@ html, body, .stage {
   opacity: .24;
   mix-blend-mode: multiply;
   filter: contrast(1.6) grayscale(1);
-  z-index: 7;
+  z-index: 8;
 }
 .source-lines svg,
 .source-lines img {
@@ -982,10 +997,10 @@ html, body, .stage {
   filter: drop-shadow(0 0 calc(var(--size) * .012) white) drop-shadow(0 0 calc(var(--size) * .03) ${accent[1]});
   opacity: ${theme.sparkle ?? 0.82};
   mix-blend-mode: screen;
-  z-index: 8;
+  z-index: 9;
 }
-.chrome-star.s1 { right: 26%; top: 16%; transform: rotate(18deg); }
-.chrome-star.s2 { right: 31%; bottom: 29%; transform: rotate(-8deg) scale(.66); }
+.chrome-star.s1 { right: 26%; top: 16%; transform: rotate(18deg) scale(.82); opacity: .62; }
+.chrome-star.s2 { right: 31%; bottom: 29%; transform: rotate(-8deg) scale(.52); opacity: .48; }
 
 .chrome-polish {
   position: absolute;
@@ -998,7 +1013,7 @@ html, body, .stage {
   mix-blend-mode: screen;
   opacity: .44;
   pointer-events: none;
-  z-index: 9;
+  z-index: 10;
 }`;
 }
 
