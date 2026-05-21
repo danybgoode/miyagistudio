@@ -24,22 +24,32 @@ const THEMES = {
   "discomorphism": {
     renderer: "discomorphism",
     defaultScale: 0.99,
-    bg: ["#11151b", "#07090f", "#181925", "#07080d"],
+    background: ["#0b0c10", "#12131c", "#07080b", "#141520"],
+    bg: ["#0b0c10", "#12131c", "#07080b", "#141520"],
     glass: "rgba(255,255,255,.08)",
-    edge: "rgba(125,216,197,.82)",
+    edge: ["#475eff", "#d85cff", "#5df2ff"],
     shadow: "rgba(0,0,0,.5)",
-    accent: "#35e5ff",
-    lights: ["#35e5ff", "#d65cff", "#f8e8a4", "#62ffcd"]
+    accent: "#d856ff",
+    lights: ["#d856ff", "#546fff", "#ffffff", "#5cffd3", "#f8e8a4"],
+    gap: 0.12,
+    tileRadius: 0.18,
+    rimIntensity: 0.95,
+    glow: 0.48,
+    sparkle: 0.85
   },
   "chrome-metallic": {
     renderer: "chrome-metallic",
     defaultScale: 0.62,
-    bg: ["#090a11", "#161727", "#080910", "#10131c"],
+    background: ["#030407", "#090b14", "#040509", "#0c0d18"],
+    bg: ["#030407", "#090b14", "#040509", "#0c0d18"],
     glass: "rgba(255,255,255,.07)",
     edge: "rgba(255,255,255,.28)",
     shadow: "rgba(0,0,0,.48)",
-    accent: "#d856ff",
-    metal: ["#f8fbff", "#8596b7", "#ffffff", "#5f6e96", "#e9f0ff"]
+    accent: ["#30e2ff", "#d856ff", "#ffffff"],
+    metal: ["#ffffff", "#555d70", "#ffffff", "#12141a", "#b0bbd4", "#ffffff", "#303647", "#ffffff"],
+    glow: 0.54,
+    bevel: 0.85,
+    sparkle: 0.88
   },
   "dark-glass": {
     renderer: "glass",
@@ -121,6 +131,7 @@ let generatedAssets = [];
 let hasManualAssetScale = false;
 let customAiTheme = null;
 let activePreset = "single"; // "single" or "pack"
+let previewRenderToken = 0;
 
 const TEST_KEY_VAL = "AQ" + "." + "Ab8RN6Ix7N0" + "AAz1" + "ZyL3" + "2oFm" + "W8qc" + "BNYZ" + "NoAB" + "2L1t" + "cOpy" + "cicq" + "xxQ";
 
@@ -159,6 +170,7 @@ if (frameEnabledToggle) {
       iconPreview.classList.add("no-frame");
     }
     updateCommand();
+    updatePreviewGlyph();
     invalidateGeneratedAssets("Background Frame state changed");
   });
 }
@@ -197,7 +209,7 @@ testKeyBtn.addEventListener("click", async () => {
     setApiStatus("Please enter a key first.", "error");
     return;
   }
-  
+
   setApiStatus("Validating connection to Gemini...", "pending");
   try {
     const isValid = await validateGeminiKey(key);
@@ -232,7 +244,7 @@ if (apiKeyForm) {
 // AI Enhancer Toggle & Panel
 aiEnabledToggle.addEventListener("change", () => {
   const isEnabled = aiEnabledToggle.checked;
-  
+
   if (isEnabled) {
     const savedKey = localStorage.getItem("miyagi_gemini_key");
     if (!savedKey) {
@@ -252,6 +264,7 @@ aiEnabledToggle.addEventListener("change", () => {
     applyTheme(themeSelect.value);
   }
   updateCommand();
+  updatePreviewGlyph();
   invalidateGeneratedAssets("AI Mode toggled");
 });
 
@@ -268,21 +281,21 @@ document.querySelectorAll(".chip").forEach((chip) => {
 applyAiStylesBtn.addEventListener("click", async () => {
   const prompt = aiPrompt.value.trim();
   const savedKey = localStorage.getItem("miyagi_gemini_key");
-  
+
   if (!savedKey) {
     showToast("Please configure your API key in settings.", "error");
     openSettingsBtn.click();
     return;
   }
-  
+
   if (!prompt) {
     showToast("Please enter a styling prompt first.", "error");
     return;
   }
-  
+
   applyAiStylesBtn.disabled = true;
   aiProgressMessage.classList.remove("hidden");
-  
+
   const progressText = aiProgressMessage.querySelector("span:not(.spinner)");
   const stages = [
     "Analyzing base styles...",
@@ -301,14 +314,14 @@ applyAiStylesBtn.addEventListener("click", async () => {
     if (progressText) progressText.textContent = stages[stageIdx];
     setStatus(stages[stageIdx]);
   }, 2200);
-  
+
   try {
     const generatedTheme = await fetchAiTheme(prompt, themeSelect.value, savedKey);
     customAiTheme = normalizeThemeObject(generatedTheme);
-    
+
     applyThemeObject(customAiTheme);
     aiActiveBadge.classList.remove("hidden");
-    
+
     showToast(`AI styling successfully applied: "${customAiTheme.name}"!`, "success");
     setStatus("AI styling active");
     invalidateGeneratedAssets("AI style updated");
@@ -367,6 +380,7 @@ assetScale.addEventListener("input", () => {
   hasManualAssetScale = true;
   applyAssetScale();
   updateCommand();
+  updatePreviewGlyph();
   invalidateGeneratedAssets("Scale updated");
 });
 
@@ -448,7 +462,7 @@ function updateAiToggleState() {
 async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
-  
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -474,7 +488,7 @@ async function validateGeminiKey(key) {
       contents: [{ parts: [{ text: "Respond 'OK' if you hear me." }] }]
     })
   }, 10000); // 10s timeout for quick connection check
-  
+
   if (!response.ok) return false;
   const result = await response.json();
   const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -484,7 +498,7 @@ async function validateGeminiKey(key) {
 async function fetchAiTheme(prompt, baseThemeKey, key) {
   const baseTheme = THEMES[baseThemeKey] || THEMES["liquid-glass"];
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-  
+
   const systemPrompt = `
 You are a master digital designer specializing in glassmorphic, neomorphic, and metallic UI themes. You generate highly polished theme variables for a standard visual renderer.
 Given a user style request and a "Core Theme Base" context, you will return a strictly valid JSON object that contains the properties required to render this premium aesthetic.
@@ -589,22 +603,22 @@ Respond ONLY with raw valid JSON. Do not include markdown code block formatting 
 function normalizeThemeObject(theme) {
   const norm = { ...theme };
   norm.renderer = norm.renderer || "glass";
-  
+
   const rawBg = norm.bg || norm.background;
   norm.bg = asArray(rawBg, ["#1a1a1a", "#0a0a0a"]);
   norm.background = norm.bg;
-  
+
   if (!norm.glass) {
     norm.glass = norm.baseColor ? withAlpha(norm.baseColor, 0.4) : "rgba(255,255,255,0.3)";
   }
-  
+
   if (!norm.edge) norm.edge = norm.highlightColor || "rgba(255,255,255,0.7)";
   if (!norm.shadow) norm.shadow = "rgba(0,0,0,0.4)";
   if (!norm.accent) norm.accent = norm.baseColor || "#ffffff";
-  
+
   norm.lights = asArray(norm.lights || norm.accent, ["#35e5ff", "#d65cff", "#f8e8a4"]);
   norm.metal = asArray(norm.metal, ["#ffffff", "#8596b7", "#ffffff", "#5f6e96"]);
-  
+
   norm.defaultScale = norm.defaultAssetScale || 0.56;
   return norm;
 }
@@ -616,11 +630,17 @@ function applyTheme(name) {
   applyThemeObject(theme);
 }
 
+function getActiveTheme() {
+  return (aiEnabledToggle.checked && customAiTheme)
+    ? customAiTheme
+    : THEMES[themeSelect.value];
+}
+
 function applyThemeObject(theme) {
   if (!theme) return;
   const renderer = theme.renderer || "glass";
   iconPreview.dataset.renderer = renderer;
-  
+
   if (renderer === "crystal-liquid") {
     iconPreview.style.setProperty("--preview-bg", `radial-gradient(circle at 50% 0%, ${theme.secondaryColor || '#1ED760'} 0%, ${theme.environmentColor || '#0A0A0A'} 80%)`);
     iconPreview.style.setProperty("--preview-glass", theme.baseColor || "rgba(255,255,255,0.4)");
@@ -629,16 +649,31 @@ function applyThemeObject(theme) {
   } else if (renderer === "discomorphism") {
     const bgColors = asArray(theme.background || theme.bg, ["#11151b", "#07090f"]);
     const edgeColors = asArray(theme.edge, ["#7dd8c5"]);
+    const lights = asArray(theme.lights, ["#35e5ff", "#d65cff", "#f8e8a4"]);
     iconPreview.style.setProperty("--preview-bg", `linear-gradient(135deg, ${bgColors.join(", ")})`);
     iconPreview.style.setProperty("--preview-glass", "rgba(255,255,255,0.08)");
     iconPreview.style.setProperty("--preview-edge", edgeColors[0]);
     iconPreview.style.setProperty("--preview-shadow", "rgba(0,0,0,0.5)");
+    iconPreview.style.setProperty("--light-0", lights[0]);
+    iconPreview.style.setProperty("--light-1", lights[1] || lights[0]);
+    iconPreview.style.setProperty("--light-2", lights[2] || lights[1] || lights[0]);
+    iconPreview.style.setProperty("--edge-0", edgeColors[0]);
+    iconPreview.style.setProperty("--edge-1", edgeColors[1] || edgeColors[0]);
+    iconPreview.style.setProperty("--edge-2", edgeColors[2] || edgeColors[1] || edgeColors[0]);
+    iconPreview.style.setProperty("--glow-intensity", theme.glow ?? 0.48);
   } else if (renderer === "chrome-metallic") {
     const bgColors = asArray(theme.background || theme.bg, ["#090a11", "#161727"]);
+    const metalColors = asArray(theme.metal, ["#ffffff", "#555d70", "#ffffff"]);
+    const accentColors = asArray(theme.accent, ["#30e2ff", "#d856ff"]);
     iconPreview.style.setProperty("--preview-bg", `linear-gradient(135deg, ${bgColors.join(", ")})`);
     iconPreview.style.setProperty("--preview-glass", "rgba(255,255,255,0.07)");
     iconPreview.style.setProperty("--preview-edge", "rgba(255,255,255,0.28)");
     iconPreview.style.setProperty("--preview-shadow", "rgba(0,0,0,0.48)");
+    iconPreview.style.setProperty("--metal-0", metalColors[0]);
+    iconPreview.style.setProperty("--metal-1", metalColors[1]);
+    iconPreview.style.setProperty("--metal-2", metalColors[2] || metalColors[0]);
+    iconPreview.style.setProperty("--accent-0", accentColors[0]);
+    iconPreview.style.setProperty("--accent-1", accentColors[1] || accentColors[0]);
   } else {
     const bgColors = asArray(theme.bg || theme.background, ["#dceeff", "#f9f7f1"]);
     iconPreview.style.setProperty("--preview-bg", `linear-gradient(135deg, ${bgColors.join(", ")})`);
@@ -646,6 +681,8 @@ function applyThemeObject(theme) {
     iconPreview.style.setProperty("--preview-edge", asArray(theme.edge, ["rgba(255,255,255,0.7)"])[0]);
     iconPreview.style.setProperty("--preview-shadow", asArray(theme.shadow, ["rgba(39,59,88,.28)"])[0]);
   }
+
+  updatePreviewGlyph(theme);
 }
 
 function applyRecommendedScale() {
@@ -662,6 +699,50 @@ function applyAssetScale() {
   assetScaleValue.value = `${Math.round(scale * 100)}%`;
 }
 
+function setLayeredPreviewGlyph() {
+  iconPreview.dataset.materialPreview = "layers";
+  previewGlyph.innerHTML = currentAsset?.markup || "";
+}
+
+async function updatePreviewGlyph(theme = getActiveTheme()) {
+  if (!currentAsset || !theme) return;
+
+  const renderer = theme.renderer || "glass";
+  if (renderer !== "discomorphism" && renderer !== "chrome-metallic") {
+    previewRenderToken += 1;
+    setLayeredPreviewGlyph();
+    return;
+  }
+
+  const token = previewRenderToken + 1;
+  previewRenderToken = token;
+  iconPreview.dataset.materialPreview = "raster";
+
+  try {
+    const image = await loadImage(currentAsset.dataUri);
+    if (token !== previewRenderToken) return;
+
+    const size = 512;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const useFrame = frameEnabledToggle ? frameEnabledToggle.checked : true;
+
+    if (renderer === "discomorphism") {
+      drawDiscoIcon(ctx, { size, image, theme, assetScale: getAssetScale(), useFrame });
+    } else {
+      drawChromeIcon(ctx, { size, image, theme, assetScale: getAssetScale(), useFrame });
+    }
+
+    if (token !== previewRenderToken) return;
+    previewGlyph.innerHTML = `<img src="${canvas.toDataURL("image/png")}" alt="">`;
+  } catch (err) {
+    console.warn("Preview render failed; falling back to source glyph.", err);
+    if (token === previewRenderToken) setLayeredPreviewGlyph();
+  }
+}
+
 function loadDefaultIcon() {
   const svg = sanitizeSvg(defaultIcon);
   currentAsset = {
@@ -671,7 +752,7 @@ function loadDefaultIcon() {
     dataUri: svgToDataUri(svg),
     markup: svg
   };
-  previewGlyph.innerHTML = svg;
+  updatePreviewGlyph();
 }
 
 async function loadAssetFile(file) {
@@ -698,7 +779,6 @@ async function loadAssetFile(file) {
       dataUri: svgToDataUri(svg),
       markup: svg
     };
-    previewGlyph.innerHTML = svg;
   } else {
     const dataUri = await fileToDataUri(file);
     currentAsset = {
@@ -708,8 +788,9 @@ async function loadAssetFile(file) {
       dataUri,
       markup: `<img src="${dataUri}" alt="">`
     };
-    previewGlyph.innerHTML = currentAsset.markup;
   }
+
+  updatePreviewGlyph();
 
   assetName.textContent = file.name;
   generatedAssets = [];
@@ -757,8 +838,8 @@ async function generateAssets() {
 
   try {
     const image = await loadImage(currentAsset.dataUri);
-    const theme = (aiEnabledToggle.checked && customAiTheme) 
-      ? customAiTheme 
+    const theme = (aiEnabledToggle.checked && customAiTheme)
+      ? customAiTheme
       : THEMES[themeSelect.value];
     const scale = getAssetScale();
 
@@ -807,7 +888,7 @@ async function generateAssets() {
 
           const fav32 = await renderPng({ size: 32, image, theme, assetScale: scale });
           generatedAssets.push(createGeneratedAsset("favicons/favicon-32x32.png", fav32));
-          
+
           const icoBlob = await createIcoFromPng(fav32);
           generatedAssets.push(createGeneratedAsset("favicons/favicon.ico", icoBlob));
         }
@@ -941,7 +1022,7 @@ async function generateAssets() {
       const percent = Math.round(((i + 1) / steps.length) * 100);
       progressBar.style.width = `${percent}%`;
       progressPercentage.textContent = `${percent}%`;
-      
+
       // Set status message
       setStatus(`Processed ${i + 1}/${steps.length} milestones`);
     }
@@ -1013,7 +1094,7 @@ async function renderOgImage({ image, theme, assetScale }) {
   canvas.width = 1200;
   canvas.height = 630;
   const ctx = canvas.getContext("2d");
-  
+
   // Gradient backdrop
   const bg = ctx.createLinearGradient(0, 0, 1200, 630);
   bg.addColorStop(0, "#08090d");
@@ -1021,7 +1102,7 @@ async function renderOgImage({ image, theme, assetScale }) {
   bg.addColorStop(1, "#030406");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 1200, 630);
-  
+
   // Background mesh wireframe
   ctx.strokeStyle = "rgba(255,255,255,0.035)";
   ctx.lineWidth = 1;
@@ -1038,39 +1119,39 @@ async function renderOgImage({ image, theme, assetScale }) {
     ctx.lineTo(1200, y);
     ctx.stroke();
   }
-  
+
   // Glowing concentric frame rings
   ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(600, 280, 240, 0, Math.PI * 2);
   ctx.stroke();
-  
+
   ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.arc(600, 280, 320, 0, Math.PI * 2);
   ctx.stroke();
-  
+
   // Color aura glow
   const glowAccent = asArray(theme.bg || theme.background, [asArray(theme.accent, ["#35e5ff"])[0]])[0];
   drawGlow(ctx, 600, 280, 220, glowAccent, 0.28);
-  
+
   // Translate, render, and scale icon at center
   const size = 300;
   const x = (1200 - size) / 2;
   const y = (560 - size) / 2;
-  
+
   ctx.save();
   ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
   ctx.shadowBlur = 60;
   ctx.shadowOffsetY = 30;
-  
+
   ctx.save();
   const radius = size * 0.218;
   roundRect(ctx, x, y, size, size, radius);
   ctx.clip();
-  
+
   ctx.translate(x, y);
   if (theme.renderer === "discomorphism") {
     drawDiscoIcon(ctx, { size, image, theme, assetScale, useFrame: true });
@@ -1081,7 +1162,7 @@ async function renderOgImage({ image, theme, assetScale }) {
   }
   ctx.restore();
   ctx.restore();
-  
+
   // Dynamic design labels at bottom
   ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
   ctx.font = "bold 13px Outfit, Inter, sans-serif";
@@ -1093,7 +1174,7 @@ async function renderOgImage({ image, theme, assetScale }) {
   ctx.font = "normal 11px Outfit, Inter, sans-serif";
   ctx.letterSpacing = "1.5px";
   ctx.fillText(`${theme.name.toUpperCase()} THEME • GEMINI AI ENHANCED`, 600, 545);
-  
+
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/png");
   });
@@ -1238,15 +1319,46 @@ function drawDiscoIcon(ctx, { size, image, theme, assetScale, useFrame }) {
       const py = glyphY + y * cell;
       const tileSize = Math.max(1, cell - gap);
 
-      const tileGradient = ctx.createLinearGradient(px, py, px + tileSize, py + tileSize);
-      tileGradient.addColorStop(0, `rgba(255,255,255,${0.55 * alpha})`);
-      tileGradient.addColorStop(0.18, rgbString(color, 0.94 * alpha));
-      tileGradient.addColorStop(0.66, rgbString(mixRgb(color, [18, 20, 32], 0.32), 0.96 * alpha));
-      tileGradient.addColorStop(1, `rgba(255,255,255,${0.38 * alpha})`);
-      ctx.fillStyle = tileGradient;
-      roundRect(ctx, px, py, tileSize, tileSize, Math.max(1, tileSize * 0.15));
+      const u = sampleCount > 1 ? x / (sampleCount - 1) : 0.5;
+      const v = sampleCount > 1 ? y / (sampleCount - 1) : 0.5;
+
+      let shineX = 15 + u * 70;
+      let shineY = 15 + v * 70;
+
+      const tileHash = (x * 127 + y * 313) % 100;
+      if (tileHash < 10) {
+        shineX = (shineX + (tileHash % 5) * 8 - 16 + 100) % 100;
+        shineY = (shineY + (tileHash % 3) * 12 - 18 + 100) % 100;
+      }
+
+      const tileRad = Math.max(1, tileSize * 0.18);
+      roundRect(ctx, px, py, tileSize, tileSize, tileRad);
+
+      const linear = ctx.createLinearGradient(px, py, px + tileSize, py + tileSize);
+      linear.addColorStop(0, `rgba(255,255,255,${0.45 * alpha})`);
+      linear.addColorStop(0.4, rgbString(color, 0.94 * alpha));
+      linear.addColorStop(1, rgbString(mixRgb(color, [0, 0, 0], 0.55), 0.96 * alpha));
+      ctx.fillStyle = linear;
       ctx.fill();
-      ctx.strokeStyle = `rgba(255,255,255,${0.24 * alpha})`;
+
+      const envX = px + ((100 - shineX) / 100) * tileSize;
+      const envY = py + ((100 - shineY) / 100) * tileSize;
+      const envRadial = ctx.createRadialGradient(envX, envY, 0, envX, envY, tileSize * 0.8);
+      envRadial.addColorStop(0, `rgba(255,255,255,${0.15 * alpha})`);
+      envRadial.addColorStop(1, `rgba(255,255,255,0)`);
+      ctx.fillStyle = envRadial;
+      ctx.fill();
+
+      const sxPx = px + (shineX / 100) * tileSize;
+      const syPy = py + (shineY / 100) * tileSize;
+      const radial = ctx.createRadialGradient(sxPx, syPy, 0, sxPx, syPy, tileSize * 0.75);
+      radial.addColorStop(0, `rgba(255,255,255,${0.95 * alpha})`);
+      radial.addColorStop(0.2, `rgba(255,255,255,${0.3 * alpha})`);
+      radial.addColorStop(0.6, `rgba(255,255,255,0)`);
+      ctx.fillStyle = radial;
+      ctx.fill();
+
+      ctx.strokeStyle = `rgba(255,255,255,${0.35 * alpha})`;
       ctx.lineWidth = Math.max(0.35, size * 0.0008);
       ctx.stroke();
     }
@@ -1332,13 +1444,62 @@ function drawChromeIcon(ctx, { size, image, theme, assetScale, useFrame }) {
   metalCtx.globalCompositeOperation = "destination-in";
   metalCtx.drawImage(mask, 0, 0);
 
+  const bevelSize = Math.max(1.2, size * 0.004);
+
+  const lightBevel = document.createElement("canvas");
+  lightBevel.width = size;
+  lightBevel.height = size;
+  const lbCtx = lightBevel.getContext("2d");
+  lbCtx.drawImage(mask, 0, 0);
+  lbCtx.globalCompositeOperation = "source-in";
+  lbCtx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  lbCtx.fillRect(0, 0, size, size);
+  lbCtx.globalCompositeOperation = "destination-out";
+  lbCtx.drawImage(mask, bevelSize, bevelSize);
+
+  const darkBevel = document.createElement("canvas");
+  darkBevel.width = size;
+  darkBevel.height = size;
+  const dbCtx = darkBevel.getContext("2d");
+  dbCtx.drawImage(mask, 0, 0);
+  dbCtx.globalCompositeOperation = "source-in";
+  dbCtx.fillStyle = "rgba(0, 0, 0, 0.75)";
+  dbCtx.fillRect(0, 0, size, size);
+  dbCtx.globalCompositeOperation = "destination-out";
+  dbCtx.drawImage(mask, -bevelSize, -bevelSize);
+
+  const edgeCanvas = document.createElement("canvas");
+  edgeCanvas.width = size;
+  edgeCanvas.height = size;
+  const edgeCtx = edgeCanvas.getContext("2d");
+  edgeCtx.drawImage(mask, 0, 0);
+  edgeCtx.globalCompositeOperation = "source-in";
+  const edgeGrad = edgeCtx.createLinearGradient(0, 0, size, size);
+  edgeGrad.addColorStop(0, "#00f3ff");
+  edgeGrad.addColorStop(1, "#ff00ea");
+  edgeCtx.fillStyle = edgeGrad;
+  edgeCtx.fillRect(0, 0, size, size);
+  edgeCtx.globalCompositeOperation = "destination-out";
+  edgeCtx.drawImage(mask, bevelSize, 0);
+  edgeCtx.drawImage(mask, -bevelSize, 0);
+  edgeCtx.drawImage(mask, 0, bevelSize);
+  edgeCtx.drawImage(mask, 0, -bevelSize);
+
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.68)";
   ctx.shadowBlur = size * 0.032;
   ctx.shadowOffsetY = size * 0.026;
   ctx.drawImage(mask, 0, 0);
   ctx.restore();
+
   ctx.drawImage(metalCanvas, 0, 0);
+  ctx.drawImage(lightBevel, 0, 0);
+  ctx.drawImage(darkBevel, 0, 0);
+
+  ctx.save();
+  ctx.globalAlpha = theme.bevel ?? 0.85;
+  ctx.drawImage(edgeCanvas, 0, 0);
+  ctx.restore();
 
   ctx.save();
   ctx.globalCompositeOperation = "multiply";
@@ -1428,17 +1589,25 @@ function renderDiscoSvg({ size, asset, theme, assetScale, useFrame }) {
   const lights = asArray(theme.lights, ["#35e5ff", "#d65cff"]);
   const edgeColors = asArray(theme.edge, ["#3b67c8", "#7dd8c5"]);
 
+  const patternDefs = `
+    <pattern id="tiles" width="${Math.max(4, size / 28)}" height="${Math.max(4, size / 28)}" patternUnits="userSpaceOnUse">
+      <rect width="100%" height="100%" fill="#020306"/>
+      <rect x="0.8" y="0.8" width="82%" height="82%" rx="${Math.max(1, size * 0.001)}" fill="url(#tileGrad)"/>
+    </pattern>
+    <linearGradient id="tileGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="0.4" stop-color="${lights[0]}"/>
+      <stop offset="1" stop-color="${lights[1] || '#d65cff'}"/>
+    </linearGradient>
+  `;
+
   if (!useFrame) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
       <feDropShadow dx="0" dy="${Math.round(size * 0.032)}" stdDeviation="${Math.round(size * 0.035)}" flood-color="#000000" flood-opacity=".45"/>
     </filter>
-    <pattern id="tiles" width="${Math.max(4, size / 28)}" height="${Math.max(4, size / 28)}" patternUnits="userSpaceOnUse">
-      <rect width="100%" height="100%" fill="#0a0d14"/>
-      <rect x="1" y="1" width="80%" height="80%" rx="1" fill="#c7fbff" opacity=".42"/>
-      <path d="M0 0h100v100" stroke="#fff" stroke-opacity=".22"/>
-    </pattern>
+    ${patternDefs}
     <mask id="glyphMask">
       <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet"/>
     </mask>
@@ -1456,11 +1625,7 @@ function renderDiscoSvg({ size, asset, theme, assetScale, useFrame }) {
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">${bgStops}</linearGradient>
     <clipPath id="iconClip"><rect width="${size}" height="${size}" rx="${radius}"/></clipPath>
-    <pattern id="tiles" width="${Math.max(4, size / 28)}" height="${Math.max(4, size / 28)}" patternUnits="userSpaceOnUse">
-      <rect width="100%" height="100%" fill="#0a0d14"/>
-      <rect x="1" y="1" width="80%" height="80%" rx="1" fill="#c7fbff" opacity=".42"/>
-      <path d="M0 0h100v100" stroke="#fff" stroke-opacity=".22"/>
-    </pattern>
+    ${patternDefs}
   </defs>
   <g clip-path="url(#iconClip)">
     <rect width="${size}" height="${size}" fill="url(#bg)"/>
@@ -1482,30 +1647,72 @@ function renderChromeSvg({ size, asset, theme, assetScale, useFrame }) {
   const finalScale = useFrame ? assetScale : Math.min(0.92, assetScale * 1.35);
   const glyph = Math.round(size * finalScale);
   const glyphX = Math.round((size - glyph) / 2);
-  
+
   const colors = asArray(theme.background || theme.bg, ["#090a11", "#161727"]);
   const bgStops = renderSvgStops(colors);
-  
-  const metalColors = asArray(theme.metal, ["#f8fbff", "#8596b7"]);
+
+  const metalColors = asArray(theme.metal, ["#f8fbff", "#8596b7", "#ffffff", "#5f6e96", "#e9f0ff"]);
   const metalStops = renderSvgStops(metalColors);
-  
+
   const accentColor = asArray(theme.accent, ["#d856ff"])[0];
 
-  if (!useFrame) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <defs>
-    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">${metalStops}</linearGradient>
-    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
-      <feDropShadow dx="0" dy="${Math.round(size * 0.032)}" stdDeviation="${Math.round(size * 0.035)}" flood-color="#000000" flood-opacity=".54"/>
+  const commonDefs = `
+    <linearGradient id="metalGrad" x1="0.14" y1="0.05" x2="0.88" y2="0.96">${metalStops}</linearGradient>
+    <linearGradient id="metalBands" x1="0" y1="0.2" x2="1" y2="0.75">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0.22" stop-color="#fff" stop-opacity="0.82"/>
+      <stop offset="0.36" stop-color="#4658ff" stop-opacity="0.58"/>
+      <stop offset="0.55" stop-color="#000" stop-opacity="0.36"/>
+      <stop offset="0.68" stop-color="#ff56e2" stop-opacity="0.62"/>
+      <stop offset="0.86" stop-color="#fff" stop-opacity="0.84"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="metalEdgeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00f3ff"/>
+      <stop offset="1" stop-color="#ff00ea"/>
+    </linearGradient>
+
+    <filter id="chromeMetalFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur1"/>
+      <feDisplacementMap in="SourceGraphic" in2="blur1" scale="28" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      <feSpecularLighting in="blur1" surfaceScale="5" specularConstant="1.6" specularExponent="35" lighting-color="#ffffff" result="specular">
+        <feDistantLight azimuth="135" elevation="50"/>
+      </feSpecularLighting>
+      <feComposite in="specular" in2="SourceGraphic" operator="in" result="specularClipped"/>
+      <feBlend in="displaced" in2="specularClipped" mode="screen" result="litMetal"/>
+      <feDiffuseLighting in="blur1" surfaceScale="5" diffuseConstant="0.95" lighting-color="#ffffff" result="diffuse">
+        <feDistantLight azimuth="135" elevation="50"/>
+      </feDiffuseLighting>
+      <feBlend in="litMetal" in2="diffuse" mode="multiply" result="shadedMetal"/>
+      <feComposite in="shadedMetal" in2="SourceGraphic" operator="in"/>
     </filter>
+
+    <filter id="chromeEdgeFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="out" result="edge"/>
+      <feComponentTransfer in="edge" result="sharpEdge">
+        <feFuncA type="linear" slope="3.5"/>
+      </feComponentTransfer>
+      <feComposite in="SourceGraphic" in2="sharpEdge" operator="in"/>
+    </filter>
+
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="${Math.round(size * 0.026)}" stdDeviation="${Math.round(size * 0.032)}" flood-color="#000000" flood-opacity=".68"/>
+    </filter>
+
     <mask id="chromeMask">
       <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet"/>
     </mask>
-  </defs>
+  `;
+
+  if (!useFrame) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <defs>${commonDefs}</defs>
   <g filter="url(#softShadow)">
     <g mask="url(#chromeMask)">
-      <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metal)"/>
-      <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet" opacity=".22" style="mix-blend-mode:multiply"/>
+      <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metalGrad)" filter="url(#chromeMetalFilter)"/>
+      <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metalBands)" filter="url(#chromeMetalFilter)" style="mix-blend-mode:screen; opacity:0.86;"/>
+      <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metalEdgeGrad)" filter="url(#chromeEdgeFilter)" opacity="${theme.bevel ?? 0.85}"/>
     </g>
   </g>
 </svg>`;
@@ -1514,14 +1721,21 @@ function renderChromeSvg({ size, asset, theme, assetScale, useFrame }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">${bgStops}</linearGradient>
-    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">${metalStops}</linearGradient>
     <clipPath id="iconClip"><rect width="${size}" height="${size}" rx="${radius}"/></clipPath>
+    ${commonDefs}
   </defs>
   <g clip-path="url(#iconClip)">
     <rect width="${size}" height="${size}" fill="url(#bg)"/>
     <circle cx="${size * 0.52}" cy="${size * 0.76}" r="${size * 0.38}" fill="${accentColor}" opacity=".28"/>
-    <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet" opacity=".38"/>
-    <image href="${asset.dataUri}" x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" preserveAspectRatio="xMidYMid meet" opacity=".78" style="filter:saturate(0) contrast(1.6)"/>
+
+    <g filter="url(#softShadow)">
+      <g mask="url(#chromeMask)">
+        <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metalGrad)" filter="url(#chromeMetalFilter)"/>
+        <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metalBands)" filter="url(#chromeMetalFilter)" style="mix-blend-mode:screen; opacity:0.86;"/>
+        <rect x="${glyphX}" y="${glyphX}" width="${glyph}" height="${glyph}" fill="url(#metalEdgeGrad)" filter="url(#chromeEdgeFilter)" opacity="${theme.bevel ?? 0.85}"/>
+      </g>
+    </g>
+
     <path d="M ${size * 0.22} ${size * 0.32} C ${size * 0.42} ${size * 0.1}, ${size * 0.62} ${size * 0.18}, ${size * 0.82} ${size * 0.3}" stroke="#fff" stroke-width="${Math.max(2, size * 0.025)}" stroke-linecap="round" opacity=".62"/>
     <circle cx="${size * 0.68}" cy="${size * 0.2}" r="${size * 0.015}" fill="#fff"/>
   </g>
@@ -1545,7 +1759,7 @@ function renderGeneratedAssets() {
   for (const asset of generatedAssets) {
     const row = document.createElement("div");
     row.className = "asset-row";
-    
+
     // Nice nesting prefix for folders inside the explorer tree list
     const parts = asset.filename.split("/");
     const basename = parts[parts.length - 1];
@@ -1602,18 +1816,18 @@ function getSelectedValues(name) {
 }
 
 function updateCommand() {
-  const activeTheme = (aiEnabledToggle.checked && customAiTheme) 
-    ? customAiTheme 
+  const activeTheme = (aiEnabledToggle.checked && customAiTheme)
+    ? customAiTheme
     : THEMES[themeSelect.value];
-  
+
   const frameToggle = document.querySelector("#frameEnabledToggle");
   const frameArg = (frameToggle && !frameToggle.checked) ? " --no-frame" : "";
-  
+
   if (activePreset === "pack") {
     commandText.textContent = `node render.js --theme ${activeTheme.renderer || 'glass'} --all-sizes-and-favicons --pwa-manifest --og-banner --asset-scale ${getAssetScale().toFixed(2)}${frameArg}`;
     return;
   }
-  
+
   const sizes = getSelectedValues("size");
   const theme = themeSelect.value;
   const formats = getSelectedValues("format");
@@ -1778,15 +1992,15 @@ function withAlpha(color, alpha) {
 async function createIcoFromPng(pngBlob) {
   const pngBuffer = await pngBlob.arrayBuffer();
   const pngSize = pngBuffer.byteLength;
-  
+
   const icoBuffer = new ArrayBuffer(22 + pngSize);
   const view = new DataView(icoBuffer);
-  
+
   // ICO Header
   view.setUint16(0, 0, true); // Reserved
   view.setUint16(2, 1, true); // Type (1 = ICO)
   view.setUint16(4, 1, true); // Number of images (1)
-  
+
   // Image Directory Entry
   view.setUint8(6, 32);       // Width (32)
   view.setUint8(7, 32);       // Height (32)
@@ -1796,11 +2010,11 @@ async function createIcoFromPng(pngBlob) {
   view.setUint16(12, 32, true); // Bits per pixel (32)
   view.setUint32(14, pngSize, true); // Image size in bytes
   view.setUint32(18, 22, true); // Image offset in file (22)
-  
+
   // Copy PNG data
   const icoArr = new Uint8Array(icoBuffer);
   icoArr.set(new Uint8Array(pngBuffer), 22);
-  
+
   return new Blob([icoBuffer], { type: "image/x-icon" });
 }
 

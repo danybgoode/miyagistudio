@@ -297,40 +297,62 @@ h1 {
 
 .icon-preview[data-renderer="discomorphism"] .preview-glass {
   background:
-    repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0 7px, rgba(0,0,0,.15) 7px 14px),
-    radial-gradient(circle at 22% 72%, rgba(53,229,255,.18), transparent 28%),
-    radial-gradient(circle at 80% 20%, rgba(214,92,255,.16), transparent 30%),
-    rgba(255,255,255,.02);
-  box-shadow: inset 0 1px 2px rgba(255,255,255,.2), inset 0 -28px 46px rgba(0,0,0,.5);
+    radial-gradient(circle at 18% 78%, var(--light-0, #d856ff) 0%, transparent 40%),
+    radial-gradient(circle at 82% 24%, var(--light-1, #546fff) 0%, transparent 40%),
+    radial-gradient(circle at 52% 16%, var(--light-2, #ffffff) 0%, transparent 40%),
+    rgba(255, 255, 255, 0.02);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.35),
+    inset 0 -28px 46px rgba(0, 0, 0, 0.6);
+  opacity: var(--glow-intensity, 0.48);
 }
 
 .icon-preview[data-renderer="discomorphism"] .preview-edge {
-  border-color: rgba(125,216,197,.4);
+  border: 1.5px solid transparent;
+  background: linear-gradient(rgba(8,9,13,0), rgba(8,9,13,0)) padding-box,
+              linear-gradient(135deg, var(--edge-0, #475eff), var(--edge-1, #d85cff), var(--edge-2, #5df2ff)) border-box;
+  opacity: 0.95;
 }
 
 .icon-preview[data-renderer="discomorphism"] .preview-glyph {
+  position: relative;
   filter:
     saturate(1.3)
     contrast(1.1)
-    drop-shadow(0 0 18px rgba(53,229,255,.22))
+    drop-shadow(0 0 18px var(--light-0, rgba(53,229,255,.22)))
     drop-shadow(0 16px 22px rgba(0,0,0,.45));
+}
+
+.icon-preview[data-renderer="discomorphism"] .preview-glyph::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 5px, #020306 5px, #020306 6px),
+    repeating-linear-gradient(90deg, transparent, transparent 5px, #020306 5px, #020306 6px);
+  background-size: 6px 6px;
+  mix-blend-mode: multiply;
+  opacity: 0.9;
 }
 
 .icon-preview[data-renderer="chrome-metallic"] .preview-glass {
   background:
-    radial-gradient(circle at 50% 76%, rgba(216,86,255,.14), transparent 36%),
+    radial-gradient(circle at 50% 76%, var(--accent-1, rgba(216,86,255,.14)), transparent 36%),
     linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.4));
   box-shadow: inset 0 1px 2px rgba(255,255,255,.15), inset 0 -28px 46px rgba(0,0,0,.6);
 }
 
+.icon-preview[data-renderer="chrome-metallic"] .preview-edge {
+  border: 1.5px solid transparent;
+  background: linear-gradient(rgba(8,9,13,0), rgba(8,9,13,0)) padding-box,
+              linear-gradient(135deg, #00f3ff, #ff00ea) border-box;
+  opacity: 0.85;
+}
+
 .icon-preview[data-renderer="chrome-metallic"] .preview-glyph {
-  filter:
-    grayscale(1)
-    brightness(1.5)
-    contrast(1.1)
-    drop-shadow(0 0 16px rgba(216,86,255,.2))
-    drop-shadow(0 14px 20px rgba(0,0,0,.5));
-  mix-blend-mode: screen;
+  filter: url("#chromeMetalFilter") drop-shadow(0 14px 20px rgba(0,0,0,.5));
+  mix-blend-mode: normal;
 }
 
 .preview-glass {
@@ -376,6 +398,19 @@ h1 {
   place-items: center;
   filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.45));
   transition: inset 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.icon-preview[data-material-preview="raster"] .preview-field,
+.icon-preview[data-material-preview="raster"] .preview-glass,
+.icon-preview[data-material-preview="raster"] .preview-edge,
+.icon-preview[data-material-preview="raster"] .preview-shine,
+.icon-preview[data-material-preview="raster"] .preview-grain {
+  display: none;
+}
+
+.icon-preview[data-material-preview="raster"] .preview-glyph {
+  inset: 0;
+  filter: none;
 }
 
 .preview-glyph svg,
@@ -1460,7 +1495,7 @@ h3 {
     min-height: auto;
     aspect-ratio: 4/3;
   }
-  
+
   .icon-preview-container {
     width: min(320px, 100%);
   }

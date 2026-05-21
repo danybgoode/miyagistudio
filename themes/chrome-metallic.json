@@ -3,11 +3,11 @@
   "renderer": "chrome-metallic",
   "description": "Dark premium app icon with masked chrome bands, cool silver-blue metal, purple glow, rim bevels, and star glints.",
   "defaultAssetScale": 0.62,
-  "background": ["#090a11", "#161727", "#080910", "#10131c"],
-  "metal": ["#f8fbff", "#8596b7", "#ffffff", "#5f6e96", "#e9f0ff"],
-  "accent": ["#546fff", "#d856ff", "#ffffff"],
-  "glow": 0.46,
-  "bevel": 0.78,
-  "shadow": 0.44,
-  "sparkle": 0.82
+  "background": ["#030407", "#090b14", "#040509", "#0c0d18"],
+  "metal": ["#ffffff", "#555d70", "#ffffff", "#12141a", "#b0bbd4", "#ffffff", "#303647", "#ffffff"],
+  "accent": ["#30e2ff", "#d856ff", "#ffffff"],
+  "glow": 0.54,
+  "bevel": 0.85,
+  "shadow": 0.52,
+  "sparkle": 0.88
 }

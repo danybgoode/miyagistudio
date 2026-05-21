@@ -362,25 +362,25 @@ function composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale }) {
     <section class="app-icon">
       <!-- 1. Background Environment -->
       <div class="env-background"></div>
-      
+
       <!-- 2. Base Glass Body -->
       <div class="base-glass"></div>
-      
+
       <!-- 3. Refraction Layer -->
       <div class="refraction-layer"></div>
-      
+
       <!-- 4. Internal Glow Layer -->
       <div class="internal-glow"></div>
-      
+
       <!-- Glyph Container -->
       <div class="glyph-wrap">${icon.markup}</div>
-      
+
       <!-- 5. Specular Reflection Layer -->
       <div class="specular-reflection"></div>
-      
+
       <!-- 6. Edge Caustics -->
       <div class="edge-caustics"></div>
-      
+
       <!-- 7. Spark Highlight Layer -->
       <div class="spark-highlight">
         <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
@@ -388,7 +388,7 @@ function composeCrystalLiquidHtml({ icon, theme, outputSize, assetScale }) {
           <circle cx="50" cy="50" r="10" fill="#ffffff" filter="blur(2px)" />
         </svg>
       </div>
-      
+
       <!-- 8. Final Composite Polish (Noise) -->
       <div class="composite-polish"></div>
     </section>
@@ -405,12 +405,12 @@ function composeCrystalLiquidCss({ icon, theme, outputSize, assetScale }) {
 :root {
   --size: ${outputSize}px;
   --radius: ${Math.round(outputSize * 0.218)}px;
-  
+
   --base: ${theme.baseColor};
   --secondary: ${theme.secondaryColor};
   --highlight: ${theme.highlightColor};
   --env: ${theme.environmentColor};
-  
+
   --blur: ${theme.blur}px;
   --opacity: ${theme.opacity};
   --refraction: ${theme.refraction};
@@ -421,7 +421,7 @@ function composeCrystalLiquidCss({ icon, theme, outputSize, assetScale }) {
   --specular: ${theme.specularIntensity};
   --edge: ${theme.edgeRim};
   --noise: ${theme.noiseAmount};
-  
+
   --glyph-scale: ${glyphScale};
 }
 
@@ -466,7 +466,7 @@ html, body, .stage {
   inset: 4%;
   border-radius: calc(var(--radius) * 0.8);
   background: color-mix(in srgb, var(--base) calc(var(--opacity) * 100%), transparent);
-  box-shadow: 
+  box-shadow:
     inset 0 0 calc(var(--size) * 0.1) rgba(0,0,0,var(--inner-shadow)),
     0 calc(var(--size) * 0.05) calc(var(--size) * 0.1) rgba(0,0,0,0.5);
   backdrop-filter: blur(var(--blur));
@@ -479,7 +479,7 @@ html, body, .stage {
   position: absolute;
   inset: 4%;
   border-radius: calc(var(--radius) * 0.8);
-  background: 
+  background:
     linear-gradient(135deg, rgba(255,255,255,0.2), rgba(0,0,0,0.2) 60%, rgba(255,255,255,0.1));
   opacity: var(--refraction);
   mix-blend-mode: overlay;
@@ -522,7 +522,7 @@ html, body, .stage {
   position: absolute;
   inset: 4%;
   border-radius: calc(var(--radius) * 0.8);
-  background: 
+  background:
     linear-gradient(160deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.1) 30%, transparent 50%);
   mask-image: linear-gradient(to bottom, black, transparent);
   -webkit-mask-image: linear-gradient(to bottom, black, transparent);
@@ -719,7 +719,7 @@ html, body, .stage {
   grid-template-columns: repeat(var(--cols), 1fr);
   grid-template-rows: repeat(var(--rows), 1fr);
   gap: var(--gap);
-  background: rgba(4,6,12,.72);
+  background: #020306;
 }
 
 .tile {
@@ -728,13 +728,14 @@ html, body, .stage {
   min-height: 0;
   border-radius: var(--tile-radius);
   background:
-    linear-gradient(142deg, rgba(255,255,255,.84), rgba(255,255,255,.12) 18%, rgba(0,0,0,.18) 52%, rgba(255,255,255,.48)),
-    radial-gradient(circle at var(--sx) var(--sy), rgba(255,255,255,.92), transparent 0 38%),
+    radial-gradient(circle at var(--sx) var(--sy), rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.3) 20%, transparent 60%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 40%, rgba(0, 0, 0, 0.55) 100%),
+    radial-gradient(circle at calc(100% - var(--sx)) calc(100% - var(--sy)), rgba(255, 255, 255, 0.15) 0%, transparent 80%),
     linear-gradient(135deg, color-mix(in srgb, var(--tile-color) 78%, ${lights[0]} 22%), color-mix(in srgb, var(--tile-color) 70%, ${lights[1]} 30%));
   box-shadow:
-    inset 0 0 0 max(.5px, calc(var(--size) * .0009)) rgba(255,255,255,.46),
-    inset 0 calc(var(--size) * .002) calc(var(--size) * .004) rgba(255,255,255,.32),
-    inset 0 calc(var(--size) * -.004) calc(var(--size) * .007) rgba(0,0,0,.42);
+    inset 0 1px 1px rgba(255, 255, 255, 0.65),
+    inset 0 -1.5px 2px rgba(0, 0, 0, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.55);
   opacity: var(--alpha);
 }
 
@@ -791,9 +792,27 @@ function composeChromeMetallicHtml({ icon, theme, outputSize, assetScale }) {
 </head>
 <body>
   <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
-    <filter id="chromeWarp">
-      <feTurbulence type="fractalNoise" baseFrequency="0.018 0.026" numOctaves="2" seed="44" result="warp"/>
-      <feDisplacementMap in="SourceGraphic" in2="warp" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    <filter id="chromeMetalFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur1"/>
+      <feDisplacementMap in="SourceGraphic" in2="blur1" scale="28" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      <feSpecularLighting in="blur1" surfaceScale="5" specularConstant="1.6" specularExponent="35" lighting-color="#ffffff" result="specular">
+        <feDistantLight azimuth="135" elevation="50"/>
+      </feSpecularLighting>
+      <feComposite in="specular" in2="SourceGraphic" operator="in" result="specularClipped"/>
+      <feBlend in="displaced" in2="specularClipped" mode="screen" result="litMetal"/>
+      <feDiffuseLighting in="blur1" surfaceScale="5" diffuseConstant="0.95" lighting-color="#ffffff" result="diffuse">
+        <feDistantLight azimuth="135" elevation="50"/>
+      </feDiffuseLighting>
+      <feBlend in="litMetal" in2="diffuse" mode="multiply" result="shadedMetal"/>
+      <feComposite in="shadedMetal" in2="SourceGraphic" operator="in"/>
+    </filter>
+    <filter id="chromeEdgeFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="out" result="edge"/>
+      <feComponentTransfer in="edge" result="sharpEdge">
+        <feFuncA type="linear" slope="3.5"/>
+      </feComponentTransfer>
+      <feComposite in="SourceGraphic" in2="sharpEdge" operator="in"/>
     </filter>
     <filter id="chromeNoise">
       <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="3" seed="45" result="noise"/>
@@ -915,7 +934,7 @@ html, body, .stage {
     linear-gradient(118deg, ${metal}),
     radial-gradient(circle at 35% 18%, #ffffff, transparent 0 28%),
     radial-gradient(circle at 78% 74%, ${accent[1]}, transparent 0 36%);
-  filter: saturate(1.14) contrast(1.13) url("#chromeWarp");
+  filter: saturate(1.14) contrast(1.13) url("#chromeMetalFilter");
   z-index: 4;
 }
 
@@ -923,6 +942,7 @@ html, body, .stage {
   background:
     linear-gradient(102deg, transparent 0 14%, rgba(255,255,255,.9) 18%, transparent 24%, rgba(70,88,255,.54) 39%, transparent 47%, rgba(255,86,226,.62) 61%, transparent 72%, rgba(255,255,255,.82) 84%, transparent 100%),
     linear-gradient(12deg, rgba(255,255,255,.2), rgba(0,0,0,.36), rgba(255,255,255,.24));
+  filter: url("#chromeMetalFilter");
   mix-blend-mode: screen;
   opacity: .86;
   z-index: 5;
@@ -930,11 +950,9 @@ html, body, .stage {
 
 .metal-edge {
   background:
-    radial-gradient(circle at 44% 18%, rgba(255,255,255,.95), transparent 0 30%),
-    linear-gradient(135deg, rgba(255,255,255,.82), transparent 30%, rgba(0,0,0,.42) 58%, rgba(255,255,255,.72));
-  filter: drop-shadow(0 0 calc(var(--size) * .012) rgba(255,255,255,.72));
-  mix-blend-mode: overlay;
-  opacity: ${theme.bevel ?? 0.78};
+    linear-gradient(135deg, #00f3ff, #ff00ea);
+  filter: url("#chromeEdgeFilter");
+  opacity: ${theme.bevel ?? 0.85};
   z-index: 6;
 }
 
@@ -985,9 +1003,23 @@ html, body, .stage {
 }
 
 function renderDiscoTiles(tileMap) {
+  const cols = tileMap.columns;
+  const rows = tileMap.rows;
   return tileMap.tiles.map((tile) => {
-    const shineX = 24 + ((tile.x * 17 + tile.y * 7) % 58);
-    const shineY = 18 + ((tile.y * 13 + tile.x * 11) % 62);
+    const u = cols > 1 ? tile.x / (cols - 1) : 0.5;
+    const v = rows > 1 ? tile.y / (rows - 1) : 0.5;
+
+    let shineX = 15 + u * 70;
+    let shineY = 15 + v * 70;
+
+    const tileHash = (tile.x * 127 + tile.y * 313) % 100;
+    if (tileHash < 10) {
+      shineX = (shineX + (tileHash % 5) * 8 - 16 + 100) % 100;
+      shineY = (shineY + (tileHash % 3) * 12 - 18 + 100) % 100;
+    }
+
+    shineX = Math.round(shineX);
+    shineY = Math.round(shineY);
     return `<span class="tile" style="--tile-color: rgb(${tile.r} ${tile.g} ${tile.b}); --alpha: ${tile.a}; --sx: ${shineX}%; --sy: ${shineY}%"></span>`;
   }).join("");
 }
